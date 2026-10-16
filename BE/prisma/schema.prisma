@@ -1,0 +1,464 @@
+// HanVui — mô hình dữ liệu (nguồn chuẩn nghiệp vụ: ../rule.md)
+// Dùng Postgres thuần: không dùng Supabase Auth/Storage/RLS để chuyển VPS dễ.
+// Ngày trong nghiệp vụ tính theo giờ Việt Nam (UTC+7), lưu dạng chuỗi "YYYY-MM-DD" / "YYYY-MM".
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum HskStandard {
+  HSK2 // HSK 2.0 (6 cấp)
+  HSK3 // HSK 3.0 (9 cấp)
+}
+
+enum TopicKind {
+  VOCAB // chủ đề từ vựng (3.1)
+  SITUATION // chủ đề tình huống của hội thoại (3.2)
+}
+
+enum LessonKind {
+  DIALOG // bài học thường
+  STORY // đoạn truyện sự kiện (bài học event)
+}
+
+enum TokenKind {
+  HINT // mở gợi ý (âm)
+  ABSENCE // bù ngày vắng
+  MONTH_END // ngày 26-28
+  RESERVE // ngày dự trữ 29-31
+  CATCHUP // gói theo kịp
+  ADMIN // đền bù sự cố
+}
+
+enum ItemKind {
+  VIP_3D // VIP 3 ngày (mốc 90%)
+}
+
+// ───────────── Tài khoản, đăng nhập ─────────────
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  email        String      @unique
+  passwordHash String
+  displayName  String
+  role         Role        @default(USER)
+  hskStandard  HskStandard @default(HSK2)
+  hskLevel     Int         @default(1) // cấp theo chuẩn đang chọn
+  hoursLearned Float       @default(0)
+  vipUntil     DateTime? // VIP còn hiệu lực tới (không có tác dụng trong sự kiện)
+  eventOptOut  Boolean     @default(false) // "Không tham gia sự kiện"
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  refreshTokens RefreshToken[]
+  lessonDone    UserLesson[]
+  words         UserWord[]
+  slots         UserSlot[]
+  events        UserEvent[]
+  missions      UserMission[]
+  ledger        TokenLedger[]
+  items         InventoryItem[]
+  levelStats    UserLevelStat[]
+  examAttempts  ExamAttempt[]
+}
+
+// Token làm mới: chỉ lưu mã băm, xoay vòng mỗi lần dùng (phát hiện bị đánh cắp).
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  family    String    @db.Uuid // cùng một phiên đăng nhập
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+// Giờ học và số từ theo từng cấp (mục 2).
+model UserLevelStat {
+  userId   String      @db.Uuid
+  standard HskStandard
+  level    Int
+  seconds  Int         @default(0)
+  words    Int         @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, standard, level])
+}
+
+// ───────────── Nội dung học ─────────────
+
+model Topic {
+  id    String    @id // ví dụ "an-uong"
+  kind  TopicKind
+  name  String
+  glyph String? // chữ đại diện, ví dụ "食"
+  sort  Int       @default(0)
+
+  words   Word[]
+  lessons LessonTopic[]
+  slots   KeySlot[]
+}
+
+model Word {
+  id      Int     @id @default(autoincrement())
+  topicId String? // chủ đề từ vựng
+  zh      String
+  pinyin  String
+  vi      String
+  pos     String? // loại từ
+  phrase  Boolean @default(false)
+  hsk2    Int? // cấp HSK 2.0 (1-6)
+  hsk3    Int? // cấp HSK 3.0 (1-9)
+  example Json? // { zh, pinyin, vi }
+
+  topic     Topic?     @relation(fields: [topicId], references: [id])
+  userWords UserWord[]
+  keySlots  KeySlot[]
+
+  @@unique([zh, pinyin])
+  @@index([topicId])
+  @@index([zh])
+}
+
+model Lesson {
+  id        String     @id // ví dụ "cafe", "cafe2"
+  kind      LessonKind @default(DIALOG)
+  title     String
+  situation String // bối cảnh: nơi chốn, nhân vật (được tìm kiếm)
+  tags      String[] // từ khóa bối cảnh (được tìm kiếm)
+  level     Int // nhóm cấp của bài: 1 = HSK 1, 2 = HSK 2 (nút chọn cấp)
+  twinId    String? // bài cùng chủ đề ở cấp kia
+  hsk2      Int? // nhãn cấp HSK 2.0, tính tự động từ các từ trong bài
+  hsk3      Int? // nhãn cấp HSK 3.0
+  published Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  topics    LessonTopic[]
+  roles     LessonRole[]
+  lines     LessonLine[]
+  questions LessonQuestion[]
+  done      UserLesson[]
+  keySlots  KeySlotLesson[]
+  storyHoi  Hoi[]
+
+  @@index([kind, level])
+}
+
+model LessonTopic {
+  lessonId String
+  topicId  String
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  topic  Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, topicId])
+  @@index([topicId])
+}
+
+// Giọng nhân vật theo vai (3.2): giới tính + khoảng giọng.
+model LessonRole {
+  lessonId   String
+  who        String // "A", "B", "N"...
+  label      String // "Trưởng nhóm", "Lễ tân"...
+  gender     String // "m" | "f"
+  pitchRange Int // 1 trầm, 2 vừa, 3 cao
+  voiceId    String? // ví dụ "zh-CN-YunjianNeural"
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, who])
+}
+
+model LessonLine {
+  lessonId  String
+  idx       Int
+  who       String
+  zh        String
+  pinyin    String
+  vi        String
+  tokens    Json // tách từ sẵn: [{ t, p?, v?, x? }] (x = dấu câu)
+  audioKey  String? // khóa file trên Cloudflare R2 (không lưu URL đầy đủ)
+  audioHash String? // băm nội dung + giọng; đổi thì sinh lại
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, idx])
+}
+
+// Câu hỏi bằng tiếng Trung kèm bản dịch.
+model LessonQuestion {
+  lessonId String
+  idx      Int
+  kind     String? // "Nghe hiểu", "Đoán chữ"
+  prompt   String
+  promptVi String
+  options  Json // [{ zh, vi }]
+  answer   Int // chỉ số đáp án đúng
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, idx])
+}
+
+// ───────────── Sự kiện truyện ─────────────
+
+model Story {
+  id       String    @id
+  month    String    @unique // "2026-10": sự kiện chạy theo tháng dương lịch
+  title    String
+  titleZh  String?
+  chapters Chapter[]
+}
+
+// Chương = 1 tuần (idx 1..4 = ngày 1-7, 8-14, 15-21, 22-28).
+model Chapter {
+  id      Int       @id @default(autoincrement())
+  storyId String
+  idx     Int
+  title   String?
+  story   Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  hoi     Hoi[]
+  slots   KeySlot[]
+
+  @@unique([storyId, idx])
+}
+
+// Hồi: mở khi tìm đủ 3, 6, 9, 12 ô của chương.
+model Hoi {
+  id            Int     @id @default(autoincrement())
+  chapterId     Int
+  idx           Int // 1..4
+  title         String
+  titleZh       String?
+  storyLessonId String?
+
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  lesson  Lesson? @relation(fields: [storyLessonId], references: [id])
+
+  @@unique([chapterId, idx])
+}
+
+// Ô từ khóa. Gợi ý dạng { zh, vi }; gợi ý 2, 3 theo nhóm cấp: { "1": {zh,vi}, "2": {...} }.
+model KeySlot {
+  id          Int     @id @default(autoincrement())
+  chapterId   Int
+  idx         Int // 1..12 (thứ tự gốc; mỗi người thấy một thứ tự xáo riêng)
+  wordId      Int
+  clueTopicId String? // chủ đề của gợi ý 1 (lọc danh sách bài)
+  hintGeneral Json
+  hint1       Json
+  hint2       Json
+  hint3       Json
+
+  chapter   Chapter         @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  word      Word            @relation(fields: [wordId], references: [id])
+  clueTopic Topic?          @relation(fields: [clueTopicId], references: [id])
+  lessons   KeySlotLesson[]
+  users     UserSlot[]
+
+  @@unique([chapterId, idx])
+}
+
+// Hội thoại chứa từ khóa, theo nhóm cấp (gợi ý 2 trỏ tới bài hợp cấp).
+model KeySlotLesson {
+  slotId   Int
+  lessonId String
+  hskGroup Int
+
+  slot   KeySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  lesson Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([slotId, lessonId])
+}
+
+// ───────────── Tiến độ của người học ─────────────
+
+model UserLesson {
+  userId       String    @db.Uuid
+  lessonId     String
+  openedAt     DateTime  @default(now())
+  answers      Json? // number[] lần trả lời gần nhất
+  correct      Int       @default(0)
+  allDone      Boolean   @default(false) // đã trả lời hết câu hỏi
+  transcript   Boolean   @default(false) // đã mở lời thoại (trả lời xong hoặc bỏ qua)
+  skippedDay   String? // ngày bấm "Bỏ qua, xem lời thoại" (bài không tính nhiệm vụ trong ngày đó)
+  completedAt  DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lessonId])
+}
+
+// Sổ tay: một danh sách, nhiều cách xem (3.7). Từ chưa có trong từ điển vẫn lưu, AI điền nghĩa sau.
+model UserWord {
+  id             Int       @id @default(autoincrement())
+  userId         String    @db.Uuid
+  wordId         Int?
+  zh             String
+  pinyin         String    @default("")
+  vi             String    @default("")
+  pos            String?
+  isPhrase       Boolean   @default(false)
+  aiPending      Boolean   @default(false) // chờ AI điền nghĩa
+  sourceLessonId String?
+  topics         String[] // chủ đề của bài nguồn (tự lấy)
+  hsk2           Int?
+  hsk3           Int?
+  savedAt        DateTime  @default(now())
+  savedDay       String // ngày lưu theo giờ VN
+  reviewBox      Int       @default(0) // ôn tập ngắt quãng (sau này)
+  dueAt          DateTime?
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word Word? @relation(fields: [wordId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, zh])
+  @@index([userId, savedDay])
+}
+
+// Trạng thái ô của từng người.
+model UserSlot {
+  userId      String    @db.Uuid
+  slotId      Int
+  hintsOpened Int       @default(0)
+  hintGroups  Int[] // nhóm cấp đã dùng khi mở gợi ý 2, 3 (đổi cấp sau đó không đổi gợi ý đã mở)
+  foundAt     DateTime?
+  points      Int       @default(0)
+  early       Boolean   @default(false) // tìm trong tuần của chương (+30)
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot KeySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@id([userId, slotId])
+}
+
+// Một dòng cho mỗi người mỗi sự kiện (tháng): lượt, điểm, đoán sai, nhiệm vụ tuần.
+model UserEvent {
+  userId        String    @db.Uuid
+  month         String // "2026-10"
+  tokens        Int       @default(0) // lượt gợi ý, hết hạn khi hết tháng
+  points        Int       @default(0) // điểm sự kiện (xếp hạng)
+  solved        Int       @default(0)
+  medal         Int       @default(0) // 0 chưa có, 1 Đồng, 2 Bạc, 3 Vàng, 4 Ngọc
+  lastSolvedAt  DateTime? // xếp hạng khi bằng điểm và huy chương
+  wrong         Int       @default(0) // tổng số lần sai
+  left          Int       @default(3) // lượt đoán còn lại trong nhóm 3
+  penalty       Int       @default(0) // điểm phạt chờ trừ vào ô đúng kế tiếp
+  lockedUntil   DateTime?
+  loginBits     Int       @default(0) // bit (ngày - 1) đã đăng nhập
+  joinDay       Int // ngày đăng nhập đầu tiên trong tháng
+  lastLoginDay  Int // ngày đăng nhập gần nhất (để tính bù ngày vắng)
+  weekLessons   Int[]     @default([0, 0, 0, 0])
+  weekOnlineSec Int[]     @default([0, 0, 0, 0])
+  weekClaimed   Int[]     @default([0, 0, 0, 0]) // bit mốc tuần đã nhận
+  flags         Int       @default(0) // bit: gói theo kịp, VIP mốc cuối...
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, month])
+  @@index([month, points(sort: Desc), medal(sort: Desc), lastSolvedAt])
+}
+
+// Nhiệm vụ ngày.
+model UserMission {
+  userId     String    @db.Uuid
+  day        String // "2026-10-16" (giờ Việt Nam)
+  lessonIds  String[] // bài khác nhau đã nghe + trả lời hết hôm nay
+  onlineSec  Int       @default(0)
+  lastPingAt DateTime?
+  claimed    Int       @default(0) // bit nhiệm vụ đã nhận lượt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+}
+
+// Sổ lượt: chỉ các giao dịch lượt quan trọng (không ghi từng nhiệm vụ nhỏ).
+model TokenLedger {
+  id        Int       @id @default(autoincrement())
+  userId    String    @db.Uuid
+  month     String
+  delta     Int
+  kind      TokenKind
+  reason    String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, month])
+}
+
+// Túi đồ: bấm mở thì kích hoạt và đếm ngược; không mở thì hết hạn dùng.
+model InventoryItem {
+  id         Int       @id @default(autoincrement())
+  userId     String    @db.Uuid
+  kind       ItemKind
+  source     String? // "event:2026-10:medal4"
+  receivedAt DateTime  @default(now())
+  expiresAt  DateTime // hạn mở
+  openedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source])
+  @@index([userId])
+}
+
+// ───────────── Đề nâng cấp ─────────────
+
+// sections: [{ name, questions: [{ id, type: "choice"|"order"|"fill", prompt, options?, answer, points }] }]
+model Exam {
+  id          String      @id
+  standard    HskStandard
+  level       Int
+  idx         Int
+  title       String
+  durationMin Int
+  maxScore    Int
+  passScore   Int
+  sections    Json
+  published   Boolean     @default(false)
+
+  attempts ExamAttempt[]
+
+  @@unique([standard, level, idx])
+}
+
+model ExamAttempt {
+  id          Int       @id @default(autoincrement())
+  userId      String    @db.Uuid
+  examId      String
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Int?
+  passed      Boolean?
+  leveledUp   Boolean   @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
