@@ -46,6 +46,9 @@ export class EventService {
   ping(userId: string) {
     return this.missions.ping(userId);
   }
+  today(userId: string) {
+    return this.missions.today(userId);
+  }
   onLessonCompleted(userId: string, lessonId: string) {
     return this.missions.onLessonCompleted(userId, lessonId);
   }

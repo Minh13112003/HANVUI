@@ -36,6 +36,12 @@ export class EventController {
     return this.event.state(u.id);
   }
 
+  /** Tiến độ nhiệm vụ ngày (thẻ "Nhiệm vụ hôm nay"). */
+  @Get('today')
+  today(@CurrentUser() u: AuthUser) {
+    return this.event.today(u.id);
+  }
+
   @HttpCode(200)
   @Post('slots/:slotId/hint')
   hint(@CurrentUser() u: AuthUser, @Param('slotId', ParseIntPipe) slotId: number) {

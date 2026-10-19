@@ -1,6 +1,6 @@
 // Nạp nội dung mẫu lấy từ bản demo (bản thật: AI sinh, người duyệt). Chỉ chạy ở môi trường dev.
 // Chạy: pnpm db:seed   (xóa và nạp lại phần NỘI DUNG, không đụng tài khoản)
-import 'dotenv/config';
+import '../../src/config/dotenv.js';
 import { readFileSync } from 'node:fs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client.js';
@@ -9,6 +9,9 @@ if (process.env.NODE_ENV === 'production') throw new Error('Không seed trên pr
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
 const demo = JSON.parse(readFileSync(new URL('./demo-data.json', import.meta.url), 'utf8'));
+// 6 hội thoại cấp HSK 3 soạn thêm (18/10/2026), chưa qua duyệt — xem _note trong file.
+const hsk3 = JSON.parse(readFileSync(new URL('./hsk3-dialogs.json', import.meta.url), 'utf8'));
+const hsk3Words: any[] = hsk3.words.map(([zh, py, vi, pos]: string[]) => ({ zh, py, vi, pos }));
 
 const MONTH = '2026-10';
 const slug = (s: string) =>
@@ -26,7 +29,7 @@ const VOICE: Record<string, string> = {
 // Tách từ: ưu tiên cụm dài nhất có trong từ điển (bản thật: AI tách khi sinh bài).
 const pyMap = new Map<string, string>();
 for (const [zh, py] of demo.SUPP) pyMap.set(zh, py);
-const allWords: any[] = [...demo.TOPICS.flatMap((t: any) => t.words), ...demo.EXTRA, ...demo.STORYW];
+const allWords: any[] = [...demo.TOPICS.flatMap((t: any) => t.words), ...demo.EXTRA, ...demo.STORYW, ...hsk3Words];
 for (const w of allWords) pyMap.set(w.zh, w.py);
 for (const l of demo.DLGS) for (const [zh, py] of l.words ?? []) pyMap.set(zh, py);
 for (const k of demo.KEYS) if (!pyMap.has(k.key)) pyMap.set(k.key, '');
@@ -90,26 +93,63 @@ async function main() {
     });
   };
   demo.TOPICS.forEach((t: any) => t.words.forEach((w: any) => add(w, `v-${t.id}`)));
-  [...demo.EXTRA, ...demo.STORYW].forEach((w: any) => add(w, null));
+  [...demo.EXTRA, ...demo.STORYW, ...hsk3Words].forEach((w: any) => add(w, null));
   await prisma.word.createMany({ data: wordRows });
   const wordId = new Map((await prisma.word.findMany()).map((w) => [w.zh, w.id]));
 
-  // Hội thoại thường
-  const dialogs = demo.DLGS.filter((l: any) => l.id !== 'story');
+  // Hội thoại thường: HSK 1 (demo), HSK 2 (demo) và HSK 3 (soạn thêm) — gộp về một dạng chung.
+  interface Dlg {
+    id: string;
+    base: string;
+    level: number;
+    title: string;
+    situation: string;
+    who: Record<string, string>;
+    cast: Record<string, { g: string; r: number }>;
+    lines: any[];
+    qs: any[];
+  }
+  const fromDemo = (l: any): Dlg => {
+    const level = l.id.endsWith('2') ? 2 : 1;
+    const base = level === 2 ? l.id.slice(0, -1) : l.id;
+    const meta = demo.LMETA[base] ?? {};
+    return {
+      id: l.id,
+      base,
+      level,
+      title: l.title,
+      situation: l.sub.split(' · ')[0],
+      who: meta.who ?? { A: 'Nhân viên', B: 'Khách' },
+      cast: demo.CAST[l.id],
+      lines: l.lines,
+      qs: l.qs,
+    };
+  };
+  const dialogs: Dlg[] = [
+    ...demo.DLGS.filter((l: any) => l.id !== 'story').map(fromDemo),
+    ...hsk3.dialogs.map((l: any) => ({
+      id: l.id,
+      base: l.base,
+      level: 3,
+      title: l.title,
+      situation: l.sub.split(' · ')[0],
+      who: l.who,
+      cast: l.cast,
+      lines: l.lines,
+      qs: l.qs,
+    })),
+  ];
+
   for (const l of dialogs) {
-    const lvl2 = l.id.endsWith('2');
-    const baseId = lvl2 ? l.id.slice(0, -1) : l.id;
-    const meta = demo.LMETA[baseId] ?? { topics: [], tags: [] };
-    const cast = demo.CAST[l.id];
-    const roleNames = meta.who ?? { A: 'Nhân viên', B: 'Khách' };
+    const meta = demo.LMETA[l.base] ?? { topics: [], tags: [] };
     await prisma.lesson.create({
       data: {
-        id: l.id, kind: 'DIALOG', title: l.title, situation: l.sub.split(' · ')[0],
-        tags: meta.tags, level: lvl2 ? 2 : 1, twinId: lvl2 ? baseId : `${l.id}2`, published: true,
-        topics: { create: meta.topics.map((n: string) => ({ topicId: slug(n) })) },
+        id: l.id, kind: 'DIALOG', title: l.title, situation: l.situation,
+        tags: meta.tags ?? [], level: l.level, published: true,
+        topics: { create: (meta.topics ?? []).map((n: string) => ({ topicId: slug(n) })) },
         roles: {
-          create: Object.entries(cast).map(([who, c]: [string, any]) => ({
-            who, label: roleNames[who] ?? who, gender: c.g, pitchRange: c.r, voiceId: VOICE[`${c.g}${c.r}`],
+          create: Object.entries(l.cast).map(([who, c]: [string, any]) => ({
+            who, label: l.who[who] ?? who, gender: c.g, pitchRange: c.r, voiceId: VOICE[`${c.g}${c.r}`],
           })),
         },
         lines: {
@@ -126,11 +166,16 @@ async function main() {
       },
     });
   }
-  // Bài HSK 1 không có bản HSK 2 thì bỏ liên kết song sinh
-  const ids = new Set(dialogs.map((l: any) => l.id));
-  for (const l of dialogs) {
-    const twin = l.id.endsWith('2') ? l.id.slice(0, -1) : `${l.id}2`;
-    if (!ids.has(twin)) await prisma.lesson.update({ where: { id: l.id }, data: { twinId: null } });
+
+  // Nút đổi bản: xoay vòng theo cấp trong cùng chủ đề (HSK 1 → 2 → 3 → 1). Chủ đề chỉ có một cấp thì không có nút.
+  const byBase = new Map<string, Dlg[]>();
+  for (const l of dialogs) byBase.set(l.base, [...(byBase.get(l.base) ?? []), l]);
+  for (const group of byBase.values()) {
+    const sorted = [...group].sort((x, y) => x.level - y.level);
+    for (const [i, l] of sorted.entries()) {
+      const twinId = sorted.length > 1 ? sorted[(i + 1) % sorted.length].id : null;
+      await prisma.lesson.update({ where: { id: l.id }, data: { twinId } });
+    }
   }
 
   // Truyện sự kiện: tháng 2026-10, chương 1 (4 hồi, 12 ô). Chương 2-4 chờ nội dung.
@@ -164,12 +209,12 @@ async function main() {
     if (!id) throw new Error(`Từ khóa ${k.key} chưa có trong từ điển`);
     const hint = (h: string[]) => ({ zh: h[0], vi: h[1] });
     const both = (h: string[]) => ({ '1': hint(h), '2': hint(h) });
-    const carriers = dialogs.filter((l: any) => l.lines.some((x: any) => x.zh.includes(k.key)));
+    const carriers = dialogs.filter((l) => l.lines.some((x: any) => x.zh.includes(k.key)));
     await prisma.keySlot.create({
       data: {
         chapterId: chapter.id, idx: i + 1, wordId: id, clueTopicId: slug(demo.KEYTOPIC[k.key]),
         hintGeneral: hint(k.g), hint1: hint(k.h[0]), hint2: both(k.h[1]), hint3: both(k.h[2]),
-        lessons: { create: carriers.map((l: any) => ({ lessonId: l.id, hskGroup: l.id.endsWith('2') ? 2 : 1 })) },
+        lessons: { create: carriers.map((l) => ({ lessonId: l.id, hskGroup: l.level === 1 ? 1 : 2 })) },
       },
     });
   }

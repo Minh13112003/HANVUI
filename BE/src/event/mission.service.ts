@@ -171,6 +171,29 @@ export class MissionService {
     });
   }
 
+  /** Tiến độ nhiệm vụ ngày hôm nay, cho thẻ "Nhiệm vụ hôm nay" ở trang chủ. */
+  async today(userId: string) {
+    const day = vnDay(this.clock.now());
+    const m = await this.prisma.userMission.findUnique({ where: { userId_day: { userId, day: day.key } } });
+    const claimed = m?.claimed ?? 0;
+    const bits = {
+      login: !!(claimed & BIT.login),
+      lessons: !!(claimed & BIT.lessons),
+      online: !!(claimed & BIT.online),
+    };
+    return {
+      day: day.key,
+      login: bits.login,
+      lessonsToday: m?.lessonIds.length ?? 0,
+      lessonsNeeded: DAILY.lessonsNeeded,
+      onlineSec: m?.onlineSec ?? 0,
+      onlineNeeded: DAILY.onlineSec,
+      claimed: bits,
+      done: Number(bits.login) + Number(bits.lessons) + Number(bits.online),
+      tokensPerDay: DAILY.login + DAILY.lessons + DAILY.online,
+    };
+  }
+
   private async ensureRow(tx: Tx, userId: string, day: VnDay) {
     await tx.$executeRaw`
       INSERT INTO "UserEvent" ("userId","month","joinDay","lastLoginDay","createdAt","updatedAt")

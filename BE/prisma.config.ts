@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './src/config/dotenv.js';
 import { defineConfig } from 'prisma/config';
 
 // Prisma 7: địa chỉ database khai báo ở đây (không còn directUrl trong schema). Một DATABASE_URL cho tất cả.

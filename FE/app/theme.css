@@ -1,0 +1,961 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   HanVui — lớp giao diện "vừa học vừa chơi" (19/10/2026).
+   Nạp SAU globals.css: giữ nguyên bố cục và tên lớp của bản demo, chỉ thay
+   màu sắc, độ dày, bóng và chuyển động cho bắt mắt hơn.
+
+   Nguyên tắc:
+   - Mỗi mảng một dải màu riêng (nghe xanh dương, nói cam, đọc vàng, viết ngọc,
+     sự kiện tím, sổ tay hồng) để người học nhận ra ngay mình đang ở đâu.
+   - Chữ trên nền màu luôn là trắng, điểm đầu dải màu đủ tối để đạt tương phản.
+   - Không bao giờ chỉ dùng màu để truyền tin: luôn kèm chữ, số hoặc biểu tượng.
+   - Tôn trọng "giảm chuyển động" của máy (khối @media ở cuối file).
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Dải màu theo mảng. Điểm đầu tối để chữ trắng vẫn đọc rõ. */
+  --g-jade: linear-gradient(135deg, #0b6457 0%, #16a890 100%);
+  --g-blue: linear-gradient(135deg, #1b4fbd 0%, #4f9dff 100%);
+  --g-coral: linear-gradient(135deg, #c33f10 0%, #ff8a3d 100%);
+  --g-amber: linear-gradient(135deg, #9a6000 0%, #f0ae32 100%);
+  --g-violet: linear-gradient(135deg, #43259e 0%, #8b5cf6 100%);
+  --g-rose: linear-gradient(135deg, #a8114a 0%, #ff6b9a 100%);
+  --g-night: linear-gradient(160deg, #0a2b27 0%, #16524a 55%, #1d6b5f 100%);
+  --g-seal: linear-gradient(135deg, #9e2a1e 0%, #e2614c 100%);
+
+  /* Màu đơn tương ứng, dùng cho viền, chữ, bóng màu. */
+  --c-jade: #0e7466;
+  --c-blue: #2f6fdb;
+  --c-coral: #d9450f;
+  --c-amber: #a86a00;
+  --c-violet: #6d3bd1;
+  --c-rose: #c2185b;
+
+  /* Huy chương */
+  --m-bronze: linear-gradient(145deg, #f0b183 0%, #a4551f 100%);
+  --m-silver: linear-gradient(145deg, #f4f7f9 0%, #94a2a9 100%);
+  --m-gold: linear-gradient(145deg, #ffe489 0%, #c2902a 100%);
+  --m-jade: linear-gradient(145deg, #9bf0dd 0%, #0b6457 100%);
+
+  --ring: 0 0 0 2px rgba(255, 255, 255, 0.55) inset;
+  --lift: 0 1px 2px rgba(16, 48, 42, 0.06), 0 10px 24px -14px rgba(16, 48, 42, 0.3);
+  --lift2: 0 2px 4px rgba(16, 48, 42, 0.08), 0 20px 42px -18px rgba(16, 48, 42, 0.42);
+  --rad: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --g-jade: linear-gradient(135deg, #0a5c50 0%, #19c0a4 100%);
+    --g-night: linear-gradient(160deg, #07201d 0%, #0f3c36 60%, #15514a 100%);
+    --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 24px -14px rgba(0, 0, 0, 0.75);
+    --lift2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 20px 42px -18px rgba(0, 0, 0, 0.8);
+  }
+}
+:root[data-theme='dark'] {
+  --g-jade: linear-gradient(135deg, #0a5c50 0%, #19c0a4 100%);
+  --g-night: linear-gradient(160deg, #07201d 0%, #0f3c36 60%, #15514a 100%);
+  --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 24px -14px rgba(0, 0, 0, 0.75);
+  --lift2: 0 2px 4px rgba(0, 0, 0, 0.55), 0 20px 42px -18px rgba(0, 0, 0, 0.8);
+}
+
+/* ── Nền trang: vệt màu mềm ở bốn góc, không làm chữ khó đọc ── */
+body {
+  background-image:
+    radial-gradient(70% 45% at 100% -5%, rgba(109, 59, 209, 0.16), transparent 60%),
+    radial-gradient(60% 40% at 0% 0%, rgba(14, 116, 102, 0.18), transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, rgba(217, 69, 15, 0.1), transparent 65%);
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Con dấu 汉: chỗ dành cho nhân vật dẫn đường sau này ── */
+.seal {
+  background: var(--g-seal);
+  box-shadow:
+    0 6px 16px -6px var(--seal),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ── Nhãn mục ── */
+.shead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.shead::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--line), transparent);
+}
+.eyebrow2 {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+/* ── Thẻ: dày dặn hơn, bóng sâu hơn ── */
+.card,
+.topic,
+.gcard,
+.lcard,
+.skill,
+.notecard,
+.today,
+.menu,
+.tbl,
+.nlist,
+.reader {
+  border-radius: var(--rad);
+  box-shadow: var(--lift);
+}
+.card {
+  padding: 16px;
+}
+
+/* ── Mặt màu dùng chung: thêm data-g="blue|coral|amber|violet|rose|jade|night" ── */
+.surf {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  padding: 18px;
+  color: #fff;
+  display: grid;
+  gap: 12px;
+  background: var(--g-jade);
+  box-shadow: var(--lift2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.surf[data-g='blue'] {
+  background: var(--g-blue);
+}
+.surf[data-g='coral'] {
+  background: var(--g-coral);
+}
+.surf[data-g='amber'] {
+  background: var(--g-amber);
+}
+.surf[data-g='violet'] {
+  background: var(--g-violet);
+}
+.surf[data-g='rose'] {
+  background: var(--g-rose);
+}
+.surf[data-g='night'] {
+  background: var(--g-night);
+}
+/* Chữ Hán mờ làm hoa văn ở góc */
+.surf > .wm {
+  position: absolute;
+  right: -6px;
+  bottom: -26px;
+  font-family: var(--font-han);
+  font-weight: 700;
+  font-size: 110px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  user-select: none;
+}
+/* Vệt sáng lướt qua */
+.surf::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 36%, rgba(255, 255, 255, 0.16) 50%, transparent 64%);
+  transform: translateX(-100%);
+  animation: sheen 6s ease-in-out 1s infinite;
+  pointer-events: none;
+}
+.surf > * {
+  position: relative;
+}
+.surf .hpill,
+.hpill {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 5px 11px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.surf .hsub {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12.5px;
+}
+.surf .eyebrow {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.hero,
+.evcard {
+  background: var(--g-night);
+  border-radius: 22px;
+  box-shadow: var(--lift2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.hnum {
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hnum2 {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Nút dày có bóng nhấn xuống ── */
+.btn {
+  border-radius: 14px;
+  font-weight: 700;
+}
+.btn.primary {
+  background: var(--g-jade);
+  border: 0;
+  color: #fff;
+  box-shadow:
+    0 4px 0 #0a4f45,
+    0 12px 20px -12px rgba(11, 100, 87, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 #0a4f45,
+    0 6px 12px -10px rgba(11, 100, 87, 0.9);
+}
+.btn.primary:disabled {
+  box-shadow: none;
+  filter: saturate(0.5);
+}
+.surf .btn.primary {
+  background: #fff;
+  color: var(--c-jade);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: none;
+}
+.btn.ghost {
+  border: 1px solid var(--line);
+}
+
+/* ── Chip và thanh chọn ── */
+.chip {
+  border-radius: 99px;
+  font-weight: 600;
+}
+.chip.on {
+  background: var(--g-jade);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 14px -8px var(--c-jade);
+}
+.seg {
+  border-radius: 16px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--surface2) 80%, var(--bg));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.seg button,
+.seg a {
+  border-radius: 12px;
+  font-weight: 700;
+}
+.seg button.on,
+.seg a.on {
+  background: var(--surface);
+  box-shadow: var(--lift);
+  color: var(--fg);
+}
+.seg.skn a.on .han {
+  color: var(--c-jade);
+}
+.lvlseg {
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface2) 80%, var(--bg));
+}
+.lvlpill {
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+/* ── Ô số liệu ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.stat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 12px 12px 11px;
+  color: #fff;
+  background: var(--g-jade);
+  box-shadow: var(--lift);
+  display: grid;
+  gap: 2px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.stat[data-g='blue'] {
+  background: var(--g-blue);
+}
+.stat[data-g='coral'] {
+  background: var(--g-coral);
+}
+.stat[data-g='amber'] {
+  background: var(--g-amber);
+}
+.stat[data-g='violet'] {
+  background: var(--g-violet);
+}
+.stat[data-g='rose'] {
+  background: var(--g-rose);
+}
+.stat b {
+  /* clamp để số 4-5 chữ số không tràn ô trên điện thoại hẹp */
+  font-size: clamp(19px, 6.2vw, 26px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.stat small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.stat .ic {
+  position: absolute;
+  right: -8px;
+  bottom: -12px;
+  font-family: var(--font-han);
+  font-size: 54px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Chuỗi ngày ── */
+.flame {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px 5px 8px;
+  border-radius: 99px;
+  background: var(--g-coral);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 6px 14px -8px var(--c-coral);
+}
+.flame svg {
+  width: 15px;
+  height: 15px;
+  animation: flick 1.6s ease-in-out infinite;
+}
+@keyframes flick {
+  50% {
+    transform: scale(1.14) rotate(-3deg);
+  }
+}
+
+/* ── Bốn kỹ năng: thẻ màu, chữ Hán mờ phía sau ── */
+.skills {
+  gap: 12px;
+}
+.skill {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 20px;
+  padding: 14px;
+  color: #fff;
+  background: var(--g-jade);
+  box-shadow: var(--lift);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  min-height: 104px;
+  align-content: start;
+}
+.skill.k-listen {
+  background: var(--g-blue);
+}
+.skill.k-speak {
+  background: var(--g-coral);
+}
+.skill.k-read {
+  background: var(--g-amber);
+}
+.skill.k-write {
+  background: var(--g-jade);
+}
+.skill .sg2 {
+  position: absolute;
+  right: -4px;
+  bottom: -20px;
+  font-size: 76px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.2);
+}
+.skill b {
+  font-size: 17px;
+  font-weight: 800;
+}
+.skill small,
+.skill .muted {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 12px;
+}
+.skill .sbar {
+  background: rgba(255, 255, 255, 0.28);
+  height: 7px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+.skill .sbar i {
+  background: #fff;
+  border-radius: 4px;
+}
+
+/* ── Thẻ bài học: dải màu bên trái theo cấp ── */
+.lcard {
+  position: relative;
+  padding-left: 16px;
+}
+.lcard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 5px;
+  border-radius: 0 5px 5px 0;
+  background: var(--g-blue);
+}
+.lcard[data-lv='2']::before {
+  background: var(--g-amber);
+}
+.lcard[data-lv='3']::before {
+  background: var(--g-coral);
+}
+.lcard[data-done='1']::before {
+  background: var(--g-jade);
+}
+.lg2 {
+  border-radius: 14px;
+  background: var(--g-blue);
+  color: #fff;
+  font-size: 24px;
+  box-shadow: 0 6px 14px -9px var(--c-blue);
+}
+.lcard[data-lv='2'] .lg2 {
+  background: var(--g-amber);
+}
+.lcard[data-lv='3'] .lg2 {
+  background: var(--g-coral);
+}
+.lcard[data-done='1'] .lg2 {
+  background: var(--g-jade);
+}
+.tags em {
+  border-radius: 7px;
+  font-weight: 600;
+}
+.tags em.tp {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: transparent;
+  color: var(--accent);
+}
+.pill {
+  font-weight: 700;
+}
+.pill.ok {
+  background: var(--goodbg);
+  color: var(--good);
+}
+.pill.hot {
+  background: var(--g-coral);
+  color: #fff;
+}
+
+/* ── 12 ô từ khóa: dày, bấm có cảm giác ── */
+.grid12 {
+  gap: 10px;
+}
+.cell {
+  border: 0;
+  border-radius: 16px;
+  min-height: 98px;
+  color: var(--fg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+  transition:
+    transform 0.14s var(--ease),
+    box-shadow 0.2s;
+}
+.cell:active {
+  transform: translateY(2px) scale(0.985);
+}
+.cell .cn {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.cell .cs {
+  font-size: 24px;
+  letter-spacing: 0.14em;
+}
+.cell.c1,
+.cell.c2,
+.cell.c3,
+.cell.ok {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.cell.c1 {
+  background: var(--g-blue);
+}
+.cell.c2 {
+  background: var(--g-amber);
+}
+.cell.c3 {
+  background: var(--g-coral);
+}
+.cell.ok {
+  background: var(--g-jade);
+}
+.cell.c1 .cn,
+.cell.c2 .cn,
+.cell.c3 .cn,
+.cell.ok .cn,
+.cell.c1 .ct,
+.cell.c2 .ct,
+.cell.c3 .ct,
+.cell.ok .ct {
+  color: rgba(255, 255, 255, 0.85);
+}
+.cell.c1 .cs,
+.cell.c2 .cs,
+.cell.c3 .cs {
+  color: #fff;
+}
+.cell.ok .ck {
+  font-size: 26px;
+}
+.cell.lock {
+  background: repeating-linear-gradient(135deg, var(--surface2) 0 8px, var(--surface) 8px 16px);
+  box-shadow: none;
+  outline: 2px dashed var(--line);
+  outline-offset: -2px;
+}
+.legend .lg {
+  border: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px;
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.legend .lg.c1 {
+  background: var(--g-blue);
+  box-shadow: none;
+}
+.legend .lg.c2 {
+  background: var(--g-amber);
+  box-shadow: none;
+}
+.legend .lg.c3 {
+  background: var(--g-coral);
+  box-shadow: none;
+}
+.legend .lg.ok {
+  background: var(--g-jade);
+  box-shadow: none;
+}
+
+/* ── Huy chương kim loại ── */
+.bdg {
+  border-radius: 14px;
+  background: var(--m-jade);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 6px 14px -8px rgba(0, 0, 0, 0.5);
+}
+.bdg[data-m='1'] {
+  background: var(--m-bronze);
+  color: #fff;
+}
+.bdg[data-m='2'] {
+  background: var(--m-silver);
+  color: #2a3a36;
+}
+.bdg[data-m='3'] {
+  background: var(--m-gold);
+  color: #3a2b05;
+}
+.bdg[data-m='4'] {
+  background: var(--m-jade);
+  color: #fff;
+}
+.bdg.off {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.mdl b {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ── Thanh tiến độ ── */
+.bar,
+.tbar,
+.tbar2 {
+  height: 8px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface2) 85%, var(--bg));
+}
+.bar i,
+.tbar i,
+.tbar2 i {
+  background: var(--g-jade);
+  border-radius: 5px;
+}
+.hbar {
+  height: 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.hbar i {
+  background: #fff;
+  border-radius: 5px;
+}
+.ringw span {
+  font-weight: 800;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Nhiệm vụ ── */
+.mck {
+  border-width: 2px;
+  font-weight: 800;
+}
+.mck.on {
+  background: var(--g-jade);
+  border-color: transparent;
+  color: #fff;
+}
+.mrow {
+  padding-block: 10px;
+}
+
+/* ── Thanh tab: mục đang chọn là viên thuốc màu ── */
+.tabs div::before {
+  background: var(--g-jade);
+  box-shadow: 0 8px 18px -10px var(--c-jade);
+}
+.tabs a.on,
+.tabs button.on {
+  color: #fff;
+}
+.tabs a,
+.tabs button {
+  font-weight: 700;
+}
+.tabs .dot {
+  background: var(--seal);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* ── Bài học ── */
+.steps li {
+  border-radius: 12px;
+  font-weight: 700;
+}
+.steps li.cur {
+  background: var(--g-jade);
+  color: #fff;
+  box-shadow: 0 8px 16px -10px var(--c-jade);
+}
+.steps li.cur b {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: transparent;
+  color: #fff;
+}
+.steps li.done b {
+  background: var(--g-jade);
+  border-color: transparent;
+  color: #fff;
+}
+.player.sticky {
+  border-radius: 18px;
+}
+.icon-btn {
+  border-radius: 50%;
+}
+.icon-btn.bigspk {
+  border: 0;
+  background: var(--g-jade);
+  color: #fff;
+  box-shadow:
+    0 6px 16px -8px var(--c-jade),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.wave i {
+  background: var(--c-jade);
+}
+.opt {
+  border-radius: 14px;
+  border-width: 2px;
+  font-weight: 600;
+}
+.opt.ok {
+  background: var(--goodbg);
+  border-color: var(--good);
+}
+.opt.no {
+  background: var(--badbg);
+  border-color: var(--bad);
+}
+.wtok {
+  border-radius: 10px;
+}
+.wtok.on {
+  background: var(--g-jade);
+  border-color: transparent;
+  color: #fff;
+}
+.selbar {
+  border-radius: 18px;
+  border-width: 2px;
+}
+.fab {
+  border-radius: 99px;
+  background: var(--g-seal);
+  color: #fff;
+  font-weight: 800;
+  box-shadow:
+    0 8px 22px -8px rgba(158, 42, 30, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.fab .keyic {
+  stroke: #fff;
+}
+.tile {
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  font-size: 24px;
+}
+.tile:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.tile.on {
+  background: var(--g-jade);
+  color: #fff;
+}
+.ansrow {
+  border-radius: 16px;
+  border-width: 2px;
+  background: color-mix(in srgb, var(--surface2) 55%, var(--bg));
+}
+.castc {
+  font-weight: 600;
+  border-radius: 99px;
+}
+.castc i {
+  background: var(--c-blue);
+}
+.castc.f i {
+  background: var(--c-rose);
+}
+
+/* ── Gợi ý trong sự kiện ── */
+.keyc {
+  border-radius: 16px;
+  border-width: 2px;
+}
+.keyc.ok {
+  background: var(--goodbg);
+  border-color: var(--good);
+}
+.scorehint {
+  border-radius: 99px;
+  font-weight: 800;
+  background: var(--g-amber);
+  color: #fff;
+  border: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Sổ tay ── */
+.nghead {
+  padding-block: 8px;
+}
+.nghead b {
+  font-weight: 800;
+}
+.nzh {
+  font-weight: 700;
+}
+.nrow .icon-btn {
+  width: 34px;
+  height: 34px;
+}
+
+/* ── Từ vựng ── */
+.topic .big {
+  border-radius: 16px;
+  background: var(--g-jade);
+  color: #fff;
+  box-shadow: 0 8px 18px -10px var(--c-jade);
+}
+.topic:nth-of-type(3n + 2) .big {
+  background: var(--g-violet);
+  box-shadow: 0 8px 18px -10px var(--c-violet);
+}
+.topic:nth-of-type(3n) .big {
+  background: var(--g-rose);
+  box-shadow: 0 8px 18px -10px var(--c-rose);
+}
+.w .zh {
+  font-weight: 700;
+}
+.mc {
+  border: 0;
+  border-radius: 16px;
+  background: var(--g-violet);
+  color: #fff;
+  box-shadow: var(--lift);
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.mc.up {
+  background: var(--surface);
+  color: var(--fg);
+  text-shadow: none;
+}
+.mc.done {
+  background: var(--g-jade);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Menu ở tab Thêm ── */
+.mrow2 {
+  font-weight: 600;
+}
+.mrow2 .chev {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+/* ── Pháo giấy khi làm đúng ── */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  overflow: hidden;
+}
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: fall 1.5s cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
+}
+@keyframes fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(105vh) rotate(680deg);
+    opacity: 0.9;
+  }
+}
+
+/* ── Trạng thái rỗng ── */
+.empty {
+  border-radius: 20px;
+  background:
+    radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--surface);
+}
+.note {
+  border-radius: 16px;
+  border-left: 4px solid var(--accent);
+}
+.alert {
+  border-radius: 14px;
+  border-width: 2px;
+  font-weight: 600;
+}
+.tag.demo {
+  background: var(--g-violet);
+  color: #fff;
+  border: 0;
+}
+
+/* ── Giữ nguyên quy tắc giảm chuyển động (nhắc lại vì file này nạp sau) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+  }
+  .surf::before {
+    display: none;
+  }
+}
+
+/* ── Nút chọn cấp HSK: viên thuốc đổi màu theo cấp (xanh dương / vàng / cam) ── */
+.lvlseg[data-lv] .lvlpill {
+  background: var(--g-blue);
+  box-shadow: 0 6px 14px -8px var(--c-blue);
+}
+.lvlseg[data-lv='2'] .lvlpill {
+  background: var(--g-amber);
+  box-shadow: 0 6px 14px -8px var(--c-amber);
+}
+.lvlseg[data-lv='3'] .lvlpill {
+  background: var(--g-coral);
+  box-shadow: 0 6px 14px -8px var(--c-coral);
+}
+.lvlseg[data-lv] button.on,
+.lvlseg[data-lv] button.on b {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.lvlseg[data-lv] button.on small {
+  color: rgba(255, 255, 255, 0.85);
+}

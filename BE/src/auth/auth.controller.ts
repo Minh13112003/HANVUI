@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Headers, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, Public, type AuthUser } from './auth.decorators.js';
-import { LoginDto, RefreshDto, RegisterDto } from './auth.dto.js';
+import { LoginDto, RefreshDto, RegisterDto, UpdateMeDto } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 
 // Chống dò mật khẩu: 10 lần mỗi phút mỗi địa chỉ cho nhóm đăng nhập.
@@ -40,5 +40,10 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.id);
+  }
+
+  @Patch('me')
+  updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateMeDto) {
+    return this.auth.updateMe(user.id, dto);
   }
 }

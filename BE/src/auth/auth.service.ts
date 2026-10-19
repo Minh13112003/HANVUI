@@ -1,11 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { loadEnv } from '../config/env.js';
 import type { User } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { LoginDto, RegisterDto } from './auth.dto.js';
+import type { LoginDto, RegisterDto, UpdateMeDto } from './auth.dto.js';
 
 const BCRYPT_ROUNDS = 12;
 // Băm giả để thời gian trả lời không lộ email có tồn tại hay không.
@@ -100,6 +100,23 @@ export class AuthService {
   async logout(refreshToken: string): Promise<void> {
     const row = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
     if (row) await this.revokeFamily(row.family);
+  }
+
+  /** Đổi chuẩn HSK, cấp hoặc tên hiển thị. Cấp phải nằm trong số cấp của chuẩn đang chọn. */
+  async updateMe(userId: string, dto: UpdateMeDto): Promise<PublicUser> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Tài khoản không tồn tại');
+    const standard = dto.hskStandard ?? user.hskStandard;
+    const level = dto.hskLevel ?? user.hskLevel;
+    const maxLevel = standard === 'HSK3' ? 9 : 6;
+    if (level < 1 || level > maxLevel) {
+      throw new BadRequestException(`Chuẩn ${standard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0'} chỉ có ${maxLevel} cấp`);
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { hskStandard: standard, hskLevel: level, ...(dto.displayName ? { displayName: dto.displayName } : {}) },
+    });
+    return this.toPublic(updated);
   }
 
   async me(userId: string): Promise<PublicUser> {
