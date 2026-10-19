@@ -95,7 +95,8 @@ describe.skipIf(!process.env.DATABASE_URL)('Nội dung và sự kiện (e2e)', (
     const ok = await post('/event/guess', { lessonId: 'office', answer: 'kafei' }).expect(200);
     expect(ok.body.correct).toBe(true);
     expect(ok.body.word.zh).toBe('咖啡');
-    expect(ok.body.points).toBe(230); // chỉ mở gợi ý 1, chương 1 đã qua tuần (không +30)
+    // Chỉ mở gợi ý 1 = 230. Bản demo mở hết ô (EVENT_OPEN_ALL) thì mọi ô đều tính là "tìm sớm", +30.
+    expect(ok.body.points).toBe(process.env.EVENT_OPEN_ALL === 'true' ? 260 : 230);
 
     const solvedState = await get('/event').expect(200);
     expect(solvedState.body.solved).toBe(1);

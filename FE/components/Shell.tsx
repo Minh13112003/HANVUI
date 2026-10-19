@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { loadWordAudio } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
 import type { EventState, Notebook } from '@/lib/types';
 import TabBar from './TabBar';
@@ -20,6 +21,7 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
 
   useEffect(() => {
     if (!user) return;
+    loadWordAudio(() => api<Record<string, string>>('/words/audio'));
     api<Notebook>('/notebook?view=day')
       .then((n) => setSaved(n.total))
       .catch(() => {});

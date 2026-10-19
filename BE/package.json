@@ -28,7 +28,15 @@
     "postinstall": "prisma generate",
     "db:hsk": "tsx prisma/seed/hsk.ts",
     "audio": "tsx scripts/tts-upload.ts",
-    "audio:page": "tsx scripts/audio-test-page.ts"
+    "audio:page": "tsx scripts/audio-test-page.ts",
+    "db:seed:chapters": "tsx prisma/seed/seed-chapters.ts",
+    "db:seed:ladder": "tsx prisma/seed/seed-ladder.ts",
+    "db:seed:hsk3-vocab": "tsx prisma/seed/seed-hsk3-vocab.ts",
+    "db:fill-vocab": "tsx prisma/seed/fill-vocab.ts",
+    "audit:vocab": "tsx scripts/audit-vocab.ts",
+    "db:seed:exams": "tsx prisma/seed/seed-exams.ts",
+    "audio:exams": "tsx scripts/exam-audio.ts",
+    "audio:words": "tsx scripts/word-audio.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",
@@ -47,7 +55,8 @@
     "helmet": "^8.3.0",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
@@ -55,12 +64,14 @@
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
+    "pinyin-pro": "^3.29.5",
     "prettier": "^3.4.2",
     "prisma": "7.10.0",
     "source-map-support": "^0.5.21",

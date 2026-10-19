@@ -17,6 +17,26 @@ export class ContentController {
     return this.content.vocab(id);
   }
 
+  @Get('words/audio')
+  wordAudio() {
+    return this.content.wordAudio();
+  }
+
+  @Get('words/lookup')
+  lookup(@CurrentUser() u: AuthUser, @Query('zh') zh = '') {
+    return this.content.lookupWord(u.id, zh.trim().slice(0, 30));
+  }
+
+  @Get('vocab/progress')
+  progress(@CurrentUser() u: AuthUser) {
+    return this.content.vocabProgress(u.id);
+  }
+
+  @Get('lessons/:id/suggest-words')
+  suggest(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    return this.content.suggestWords(u.id, id);
+  }
+
   @Get('lessons')
   list(@CurrentUser() u: AuthUser, @Query() q: ListLessonsQuery) {
     return this.content.listLessons(u.id, q);

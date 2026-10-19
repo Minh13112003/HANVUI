@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Clock, vnDay, type VnDay } from '../common/time.js';
+import { demo } from '../config/demo.js';
+import type { TokenKind } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   absenceBonus,
@@ -147,13 +149,20 @@ export class MissionService {
         create: { userId, day: day.key },
         update: {},
       });
-      if (m.lessonIds.includes(lessonId)) return { lessonsToday: m.lessonIds.length, granted: 0, counted: false };
+      if (m.lessonIds.includes(lessonId)) return { lessonsToday: m.lessonIds.length, granted: 0, practiceGranted: 0, counted: false };
       const lessonIds = [...m.lessonIds, lessonId];
       let claimed = m.claimed;
       let grant = 0;
       if (!user.eventOptOut && lessonIds.length >= DAILY.lessonsNeeded && !(claimed & BIT.lessons)) {
         claimed |= BIT.lessons;
         grant += DAILY.lessons;
+      }
+      // Kho lưu trữ: nghe xong 2 bài khác nhau trong ngày được 1 lượt gợi ý luyện tập (kể cả khi tắt sự kiện).
+      let practice = 0;
+      if (lessonIds.length >= DAILY.lessonsNeeded && !(claimed & BIT.practice)) {
+        claimed |= BIT.practice;
+        practice = 1;
+        await tx.user.update({ where: { id: userId }, data: { practiceTokens: { increment: 1 } } });
       }
       await tx.userMission.update({ where: { userId_day: { userId, day: day.key } }, data: { lessonIds, claimed } });
       if (!user.eventOptOut) {
@@ -167,7 +176,7 @@ export class MissionService {
         }
         await this.claimWeekly(tx, userId, day, true);
       }
-      return { lessonsToday: lessonIds.length, granted: grant, counted: true };
+      return { lessonsToday: lessonIds.length, granted: grant, practiceGranted: practice, counted: true };
     });
   }
 
@@ -192,6 +201,33 @@ export class MissionService {
       done: Number(bits.login) + Number(bits.lessons) + Number(bits.online),
       tokensPerDay: DAILY.login + DAILY.lessons + DAILY.online,
     };
+  }
+
+  /**
+   * Cộng lượt gợi ý sự kiện của tháng hiện tại (vào hàng sự kiện của tháng, tạo nếu chưa có) và ghi sổ lượt.
+   * Dùng cho thư có quà, đền bù, tặng khi tạo tài khoản. Lượt tặng hết hạn khi sự kiện kết thúc (rule.md 5.6).
+   */
+  async grantTokens(userId: string, n: number, kind: TokenKind, reason: string, tx?: Tx) {
+    if (n <= 0) return;
+    const run = async (t: Tx) => {
+      const day = vnDay(this.clock.now());
+      await this.ensureRow(t, userId, day);
+      await this.addTokens(t, userId, day.monthKey, n);
+      await t.tokenLedger.create({ data: { userId, month: day.monthKey, delta: n, kind, reason } });
+    };
+    if (tx) await run(tx);
+    else await this.prisma.$transaction(run);
+  }
+
+  /** BẢN DEMO: tặng lượt khi tạo tài khoản (DEMO_STARTER_TOKENS). Không làm gì khi cờ tắt. */
+  async grantStarter(userId: string) {
+    const n = demo.starterTokens;
+    if (!n) return 0;
+    await this.prisma.$transaction(async (tx) => {
+      await this.grantTokens(userId, n, 'STARTER', 'Tặng khi tạo tài khoản (bản demo)', tx);
+      await tx.user.update({ where: { id: userId }, data: { practiceTokens: { increment: n } } });
+    });
+    return n;
   }
 
   private async ensureRow(tx: Tx, userId: string, day: VnDay) {
@@ -227,4 +263,4 @@ export class MissionService {
   }
 }
 
-type Tx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];

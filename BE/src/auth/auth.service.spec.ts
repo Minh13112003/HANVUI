@@ -57,7 +57,9 @@ describe('AuthService', () => {
   beforeEach(() => {
     prisma = fakePrisma();
     const jwt = new JwtService({ secret: 'x'.repeat(40), signOptions: { expiresIn: 60 } });
-    svc = new AuthService(prisma as any, jwt);
+    const missions = { grantStarter: async () => 0 };
+    const mail = { sendSystem: async () => ({}) };
+    svc = new AuthService(prisma as any, jwt, missions as any, mail as any);
   });
 
   const reg = { email: 'a@b.com', password: 'matkhau123', displayName: 'An' };

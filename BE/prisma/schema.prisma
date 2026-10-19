@@ -30,6 +30,13 @@ enum TopicKind {
 enum LessonKind {
   DIALOG // bài học thường
   STORY // đoạn truyện sự kiện (bài học event)
+  READING // bài đọc theo cấp (kỹ năng Đọc)
+}
+
+enum WritingType {
+  ORDER // sắp xếp các phần thành câu
+  FILL // điền chữ vào chỗ trống
+  CHOOSE // chọn câu tiếng Trung đúng nghĩa
 }
 
 enum TokenKind {
@@ -39,6 +46,19 @@ enum TokenKind {
   RESERVE // ngày dự trữ 29-31
   CATCHUP // gói theo kịp
   ADMIN // đền bù sự cố
+  STARTER // lượt tặng khi tạo tài khoản (chỉ bản demo)
+  MAIL // nhận quà từ hộp thư
+}
+
+enum MailSender {
+  ADMIN // thư do quản trị gửi
+  SYSTEM // thư tự động của hệ thống (chào mừng, trúng thưởng...)
+}
+
+enum MediaKind {
+  AVATAR // ảnh đại diện người dùng
+  LESSON_COVER // ảnh bối cảnh của hội thoại
+  ROLE_AVATAR // ảnh nhân vật trong khung chat của hội thoại
 }
 
 enum ItemKind {
@@ -48,22 +68,25 @@ enum ItemKind {
 // ───────────── Tài khoản, đăng nhập ─────────────
 
 model User {
-  id           String      @id @default(uuid()) @db.Uuid
-  email        String      @unique
-  passwordHash String
-  displayName  String
-  role         Role        @default(USER)
-  hskStandard  HskStandard @default(HSK2)
-  hskLevel     Int         @default(1) // cấp theo chuẩn đang chọn
-  hoursLearned Float       @default(0)
-  vipUntil     DateTime? // VIP còn hiệu lực tới (không có tác dụng trong sự kiện)
-  eventOptOut  Boolean     @default(false) // "Không tham gia sự kiện"
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String      @id @default(uuid()) @db.Uuid
+  email          String      @unique
+  passwordHash   String
+  displayName    String
+  role           Role        @default(USER)
+  hskStandard    HskStandard @default(HSK2)
+  hskLevel       Int         @default(1) // cấp theo chuẩn đang chọn
+  hoursLearned   Float       @default(0)
+  vipUntil       DateTime? // VIP còn hiệu lực tới (không có tác dụng trong sự kiện)
+  eventOptOut    Boolean     @default(false) // "Không tham gia sự kiện"
+  practiceTokens Int         @default(0) // lượt gợi ý trong kho lưu trữ (nghe xong 2 bài mỗi ngày được 1)
+  avatarId       String? // khóa gốc ảnh đại diện trên R2, ví dụ "img/avatars/<id>-ab12" (không lưu URL đầy đủ)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   refreshTokens RefreshToken[]
   lessonDone    UserLesson[]
   words         UserWord[]
+  writing       WritingDone[]
   slots         UserSlot[]
   events        UserEvent[]
   missions      UserMission[]
@@ -71,6 +94,7 @@ model User {
   items         InventoryItem[]
   levelStats    UserLevelStat[]
   examAttempts  ExamAttempt[]
+  mails         UserMail[]
 }
 
 // Token làm mới: chỉ lưu mã băm, xoay vòng mỗi lần dùng (phát hiện bị đánh cắp).
@@ -128,6 +152,8 @@ model Word {
   hsk2    Int? // cấp HSK 2.0 (1-6)
   hsk3    Int? // cấp HSK 3.0 (1-9)
   example Json? // { zh, pinyin, vi }
+  audioKey  String? // khóa file âm thanh của riêng từ trên R2 (audio/words/...)
+  audioHash String? // băm chữ + giọng + nhà cung cấp; đổi thì sinh lại
 
   topic     Topic?     @relation(fields: [topicId], references: [id])
   userWords UserWord[]
@@ -148,6 +174,7 @@ model Lesson {
   twinId    String? // bài cùng chủ đề ở cấp kia
   hsk2      Int? // nhãn cấp HSK 2.0, tính tự động từ các từ trong bài
   hsk3      Int? // nhãn cấp HSK 3.0
+  coverId   String? // khóa gốc ảnh bối cảnh trên R2
   published Boolean    @default(false)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -182,6 +209,7 @@ model LessonRole {
   gender     String // "m" | "f"
   pitchRange Int // 1 trầm, 2 vừa, 3 cao
   voiceId    String? // ví dụ "zh-CN-YunjianNeural"
+  avatarId   String? // khóa gốc ảnh nhân vật trên R2
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
@@ -293,16 +321,16 @@ model KeySlotLesson {
 // ───────────── Tiến độ của người học ─────────────
 
 model UserLesson {
-  userId       String    @db.Uuid
-  lessonId     String
-  openedAt     DateTime  @default(now())
-  answers      Json? // number[] lần trả lời gần nhất
-  correct      Int       @default(0)
-  allDone      Boolean   @default(false) // đã trả lời hết câu hỏi
-  transcript   Boolean   @default(false) // đã mở lời thoại (trả lời xong hoặc bỏ qua)
-  skippedDay   String? // ngày bấm "Bỏ qua, xem lời thoại" (bài không tính nhiệm vụ trong ngày đó)
-  completedAt  DateTime?
-  updatedAt    DateTime  @updatedAt
+  userId      String    @db.Uuid
+  lessonId    String
+  openedAt    DateTime  @default(now())
+  answers     Json? // number[] lần trả lời gần nhất
+  correct     Int       @default(0)
+  allDone     Boolean   @default(false) // đã trả lời hết câu hỏi
+  transcript  Boolean   @default(false) // đã mở lời thoại (trả lời xong hoặc bỏ qua)
+  skippedDay  String? // ngày bấm "Bỏ qua, xem lời thoại" (bài không tính nhiệm vụ trong ngày đó)
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -427,6 +455,60 @@ model InventoryItem {
   @@index([userId])
 }
 
+// ───────────── Hộp thư ─────────────
+
+// Thư. toUserId null = gửi cho mọi người (chỉ người đã có tài khoản lúc gửi thấy). Có quà khi rewardTokens > 0 hoặc có rewardItem.
+model Mail {
+  id           Int        @id @default(autoincrement())
+  sender       MailSender @default(ADMIN)
+  toUserId     String?    @db.Uuid
+  subject      String
+  body         String
+  rewardTokens Int        @default(0)
+  rewardItem   ItemKind?
+  createdBy    String?    @db.Uuid // quản trị đã gửi
+  createdAt    DateTime   @default(now())
+  expiresAt    DateTime? // quá hạn thì không nhận quà được nữa
+
+  states UserMail[]
+
+  @@index([toUserId, createdAt])
+  @@index([createdAt])
+}
+
+// Trạng thái thư của từng người: đã đọc, đã nhận quà, đã xóa.
+model UserMail {
+  userId    String    @db.Uuid
+  mailId    Int
+  readAt    DateTime?
+  claimedAt DateTime?
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mail Mail @relation(fields: [mailId], references: [id], onDelete: Cascade)
+
+  @@id([userId, mailId])
+  @@index([mailId])
+}
+
+// ───────────── Ảnh (Cloudflare R2) ─────────────
+
+// Sổ ảnh đã tải lên: để dọn ảnh mồ côi và theo dõi dung lượng. publicId là khóa gốc; mỗi cỡ là file "<khóa>-<cỡ>.webp".
+model MediaAsset {
+  id        Int       @id @default(autoincrement())
+  publicId  String    @unique
+  kind      MediaKind
+  ownerId   String?   @db.Uuid // người tải lên (null nếu do hệ thống)
+  bytes     Int // tổng dung lượng mọi cỡ
+  width     Int? // cỡ lớn nhất
+  height    Int?
+  format    String?
+  createdAt DateTime  @default(now())
+
+  @@index([kind])
+  @@index([ownerId])
+}
+
 // ───────────── Đề nâng cấp ─────────────
 
 // sections: [{ name, questions: [{ id, type: "choice"|"order"|"fill", prompt, options?, answer, points }] }]
@@ -456,9 +538,40 @@ model ExamAttempt {
   score       Int?
   passed      Boolean?
   leveledUp   Boolean   @default(false)
+  answers     Json? // đáp án người học đã nộp
+  detail      Json? // chấm từng câu
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Bài tập viết tự chấm (kỹ năng Viết). `data` giữ đáp án nên không bao giờ gửi nguyên cho người học.
+model WritingItem {
+  id    Int         @id @default(autoincrement())
+  level Int // cấp HSK 2.0 của bài tập
+  type  WritingType
+  vi    String // bản dịch tiếng Việt để người học hiểu đề
+  data  Json // ORDER: { parts } · FILL: { parts, options, answer } · CHOOSE: { options, answer }
+  sort  Int         @default(0)
+
+  done WritingDone[]
+
+  @@index([level, type])
+}
+
+/// Kết quả gần nhất của người học với một bài tập viết.
+model WritingDone {
+  id        Int      @id @default(autoincrement())
+  userId    String   @db.Uuid
+  itemId    Int
+  correct   Boolean
+  attempts  Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item WritingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
 }

@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
-import { createHash } from 'node:crypto';
 import { hasHan, isChineseAnswer, pinyinKey } from '../common/text.js';
 import { Clock, vnDay } from '../common/time.js';
+import { demo } from '../config/demo.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   cellsOpen,
@@ -22,12 +22,16 @@ import {
   WEEKLY,
 } from './event.rules.js';
 import { MissionService } from './mission.service.js';
+import { orderSlots } from './slot-order.js';
 
 export interface Hint {
   zh: string;
   vi: string;
 }
 export type ByGroup = Record<string, Hint>;
+
+/** Số ô đã mở của chương vào ngày `dayNo`. Bản demo (EVENT_OPEN_ALL) mở hết mọi ô của mọi chương. */
+const openCount = (chapterIdx: number, dayNo: number) => (demo.openAll ? SLOTS_PER_CHAPTER : cellsOpen(chapterIdx, dayNo));
 
 /** Nhóm cấp dùng cho gợi ý 2, 3: người học cấp 3 trở lên được trỏ tới hội thoại cấp cao. */
 const groupOf = (hskLevel: number) => (hskLevel >= 3 ? 2 : 1);
@@ -55,8 +59,7 @@ export class EventService {
 
   /** Thứ tự ô riêng của từng người: xáo theo mã người dùng (rule.md 5.3). */
   private order<T extends { id: number }>(userId: string, month: string, slots: T[]): T[] {
-    const key = (id: number) => createHash('sha256').update(`${userId}|${month}|${id}`).digest('hex');
-    return [...slots].sort((a, b) => (key(a.id) < key(b.id) ? -1 : 1));
+    return orderSlots(userId, month, slots);
   }
 
   private async currentStory(month: string) {
@@ -89,9 +92,9 @@ export class EventService {
     const curChapter = chapterOfDay(day.day);
 
     const chapters = story.chapters
-      .filter((c) => cellsOpen(c.idx, day.day) > 0)
+      .filter((c) => openCount(c.idx, day.day) > 0)
       .map((c) => {
-        const open = cellsOpen(c.idx, day.day);
+        const open = openCount(c.idx, day.day);
         const ordered = this.order(userId, day.monthKey, c.slots);
         const cells = ordered.map((s, pos) => {
           const u = mine.get(s.id);
@@ -137,6 +140,7 @@ export class EventService {
     return {
       active: true,
       story: { id: story.id, title: story.title, titleZh: story.titleZh, month: story.month },
+      openAll: demo.openAll,
       day: day.day,
       daysInMonth: day.daysInMonth,
       reserveDay: day.day >= 29,
@@ -203,7 +207,7 @@ export class EventService {
     dayNo: number,
   ) {
     const pos = this.order(userId, month, slot.chapter.slots).findIndex((s) => s.id === slot.id);
-    if (pos >= cellsOpen(slot.chapter.idx, dayNo)) {
+    if (pos >= openCount(slot.chapter.idx, dayNo)) {
       throw new ForbiddenException(`Mở vào ngày ${unlockDay(slot.chapter.idx, pos)}`);
     }
   }
@@ -244,7 +248,7 @@ export class EventService {
       const key = pinyinKey(answer);
       let hit: { slot: (typeof story.chapters)[number]['slots'][number]; chapter: (typeof story.chapters)[number] } | null = null;
       for (const chapter of story.chapters) {
-        const open = cellsOpen(chapter.idx, day.day);
+        const open = openCount(chapter.idx, day.day);
         const ordered = this.order(userId, day.monthKey, chapter.slots);
         ordered.forEach((slot, pos) => {
           const u = mine.get(slot.id);
@@ -274,7 +278,7 @@ export class EventService {
 
       const { slot, chapter } = hit as { slot: (typeof story.chapters)[number]['slots'][number]; chapter: (typeof story.chapters)[number] };
       const u = mine.get(slot.id)!;
-      const early = chapterOfDay(day.day) === chapter.idx;
+      const early = demo.openAll || chapterOfDay(day.day) === chapter.idx;
       const pts = pointsFor(u.hintsOpened, early, ev.penalty);
       const solved = ev.solved + 1;
       const medal = Math.max(ev.medal, medalFor(solved));

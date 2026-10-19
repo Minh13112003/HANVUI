@@ -11,6 +11,7 @@ import { hskLabel } from '@/lib/text';
 import { useUi } from '@/lib/ui';
 import type { AnswerResult, Lesson, Token } from '@/lib/types';
 import GuessSheet from './GuessSheet';
+import SuggestWords from './SuggestWords';
 import WordSheet from './WordSheet';
 
 const SpeakerIcon = () => (
@@ -419,6 +420,8 @@ export default function LessonView({ id }: { id: string }) {
           </>
         )}
       </div>
+
+      {unlocked && lesson.kind === 'DIALOG' ? <SuggestWords lessonId={id} /> : null}
 
       {unlocked ? (
         <div className="card stack">

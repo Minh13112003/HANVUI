@@ -139,7 +139,41 @@ export default function ListenListPage() {
         ) : null}
 
         {rows === null ? <p className="muted">Đang tải…</p> : null}
-        {rows?.map((l) => (
+        {rows?.some((l) => l.locked) ? (
+          <div className="alert" role="note">
+            🔒 Bài có khóa thuộc cấp cao hơn cấp hiện tại của bạn (HSK {user?.hskLevel ?? 1}). Làm đề nâng cấp ở mục Học
+            → Thi, đạt điểm thì cấp tăng và bài được mở khóa.
+          </div>
+        ) : null}
+        {rows?.map((l) =>
+          l.locked ? (
+            <button
+              key={l.id}
+              type="button"
+              className="lcard"
+              data-lv={l.level}
+              style={{ opacity: 0.6, textAlign: 'left', width: '100%' }}
+              aria-disabled="true"
+              onClick={() => window.alert(`Bài này thuộc HSK ${l.unlockLevel}. Hãy thi đạt đề lên cấp HSK ${l.unlockLevel} để mở khóa.`)}
+            >
+              <span className="lg2 han">🔒</span>
+              <span className="grow">
+                <b>{l.title}</b>
+                <small className="lsub muted">Khóa · mở khi lên HSK {l.unlockLevel}</small>
+                <span className="tags">
+                  {l.topics.map((t) => (
+                    <em key={t.id} className="tp">
+                      {t.name}
+                    </em>
+                  ))}
+                </span>
+              </span>
+              <span className="lr">
+                <span className="pill">HSK {l.unlockLevel}</span>
+                <small className="muted" style={{ fontWeight: 700 }}>Khóa</small>
+              </span>
+            </button>
+          ) : (
           <Link
             key={l.id}
             href={'/hoc/nghe/' + l.id}
@@ -171,7 +205,8 @@ export default function ListenListPage() {
               </small>
             </span>
           </Link>
-        ))}
+          ),
+        )}
         {rows?.length === 0 ? (
           <div className="card empty">
             <p className="muted">

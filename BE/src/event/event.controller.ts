@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post } from '@nes
 import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsString, Length, MaxLength } from 'class-validator';
 import { CurrentUser, type AuthUser } from '../auth/auth.decorators.js';
+import { ArchiveService } from './archive.service.js';
 import { EventService } from './event.service.js';
 
 class GuessDto {
@@ -15,7 +16,10 @@ class OptDto {
 
 @Controller('event')
 export class EventController {
-  constructor(private readonly event: EventService) {}
+  constructor(
+    private readonly event: EventService,
+    private readonly archive: ArchiveService,
+  ) {}
 
   /** Gọi mỗi lần mở app (một lần mỗi ngày có hiệu lực): ghi đăng nhập, cộng lượt. */
   @HttpCode(200)
@@ -60,6 +64,31 @@ export class EventController {
   @Post('opt-out')
   optOut(@CurrentUser() u: AuthUser, @Body() dto: OptDto) {
     return this.event.setOptOut(u.id, dto.out);
+  }
+
+  // ───────────── Kho lưu trữ (sự kiện đã kết thúc) ─────────────
+
+  @Get('archive')
+  archiveList(@CurrentUser() u: AuthUser) {
+    return this.archive.list(u.id);
+  }
+
+  @Get('archive/:month')
+  archiveStory(@CurrentUser() u: AuthUser, @Param('month') month: string) {
+    return this.archive.story(u.id, month);
+  }
+
+  @HttpCode(200)
+  @Post('archive/slots/:slotId/hint')
+  archiveHint(@CurrentUser() u: AuthUser, @Param('slotId', ParseIntPipe) slotId: number) {
+    return this.archive.openHint(u.id, slotId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('archive/guess')
+  archiveGuess(@CurrentUser() u: AuthUser, @Body() dto: GuessDto) {
+    return this.archive.guess(u.id, dto.lessonId, dto.answer);
   }
 
   @Get('leaderboard')

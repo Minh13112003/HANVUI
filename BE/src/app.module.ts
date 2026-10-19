@@ -5,7 +5,10 @@ import { AppController } from './app.controller.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommonModule } from './common/common.module.js';
 import { ContentModule } from './content/content.module.js';
+import { ExamModule } from './exam/exam.module.js';
 import { EventModule } from './event/event.module.js';
+import { MailModule } from './mailbox/mail.module.js';
+import { MediaModule } from './media/media.module.js';
 import { NotebookModule } from './notebook/notebook.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -19,6 +22,9 @@ import { PrismaModule } from './prisma/prisma.module.js';
     ContentModule,
     EventModule,
     NotebookModule,
+    MediaModule,
+    MailModule,
+    ExamModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

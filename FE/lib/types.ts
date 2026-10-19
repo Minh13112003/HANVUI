@@ -44,6 +44,9 @@ export interface LessonCard {
   hsk3: number | null;
   twinId: string | null;
   lines: number;
+  /** Bài cấp cao hơn cấp của người học: khóa tới khi thi đạt đề lên cấp. */
+  locked?: boolean;
+  unlockLevel?: number;
   status: 'new' | 'started' | 'done';
 }
 
@@ -83,7 +86,7 @@ export interface Question {
 
 export interface Lesson {
   id: string;
-  kind: 'DIALOG' | 'STORY';
+  kind: 'DIALOG' | 'STORY' | 'READING';
   title: string;
   situation: string;
   level: number;
@@ -234,4 +237,27 @@ export interface HintResult {
   hintNo: number;
   hint: Hint | null;
   clueTopicId?: string | null;
+}
+
+export interface WritingItem {
+  id: number;
+  level: number;
+  type: 'ORDER' | 'FILL' | 'CHOOSE';
+  vi: string;
+  tiles?: string[];
+  parts?: string[];
+  options?: string[];
+}
+
+export interface WritingBatch {
+  items: WritingItem[];
+  lockedCount: number;
+  level: number;
+}
+
+export interface WritingCheck {
+  correct: boolean;
+  answer: string;
+  sentence: string;
+  vi: string;
 }

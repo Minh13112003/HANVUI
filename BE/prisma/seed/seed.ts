@@ -4,6 +4,7 @@ import '../../src/config/dotenv.js';
 import { readFileSync } from 'node:fs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client.js';
+import { seedChapters } from './chapters.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('Không seed trên production');
 
@@ -218,6 +219,9 @@ async function main() {
       },
     });
   }
+
+  // Chương 2-4 (soạn riêng ở chapters.ts)
+  console.log('Chương 2-4:', await seedChapters(prisma, MONTH, demo.SUPP));
 
   const n = await Promise.all([
     prisma.topic.count(), prisma.word.count(), prisma.lesson.count(), prisma.lessonLine.count(),

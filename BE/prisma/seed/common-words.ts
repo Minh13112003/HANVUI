@@ -1,0 +1,36 @@
+// Từ cơ bản và từ chức năng rất hay gặp, kèm nghĩa tiếng Việt, để chạm vào từ nào trong bài cũng có nghĩa.
+// Soạn 19/10/2026, CHƯA QUA DUYỆT (người biết tiếng Trung cần kiểm lại).
+import type { Word } from './content/types.js';
+
+export const COMMON_WORDS: Word[] = [
+  ['我', 'tôi', 'đại từ'], ['你', 'bạn', 'đại từ'], ['您', 'ngài, bạn (kính)', 'đại từ'], ['他', 'anh ấy', 'đại từ'], ['她', 'cô ấy', 'đại từ'],
+  ['我们', 'chúng tôi, chúng ta', 'đại từ'], ['你们', 'các bạn', 'đại từ'], ['他们', 'họ', 'đại từ'], ['这', 'này, đây', 'đại từ'], ['那', 'kia, đó', 'đại từ'],
+  ['这儿', 'ở đây', 'đại từ'], ['那儿', 'ở đó', 'đại từ'], ['哪儿', 'ở đâu', 'đại từ'], ['谁', 'ai', 'đại từ'], ['什么', 'cái gì', 'đại từ'],
+  ['怎么', 'thế nào, sao', 'đại từ'], ['几', 'mấy', 'đại từ'], ['多少', 'bao nhiêu', 'đại từ'], ['哪', 'nào', 'đại từ'],
+  ['的', '(trợ từ sở hữu)', 'trợ từ'], ['了', '(trợ từ hoàn thành)', 'trợ từ'], ['吗', '(trợ từ nghi vấn)', 'trợ từ'], ['吧', '(trợ từ: nhé, nào)', 'trợ từ'],
+  ['呢', '(trợ từ: thì sao)', 'trợ từ'], ['啊', '(thán từ, trợ từ cảm thán)', 'trợ từ'], ['着', '(trợ từ: đang)', 'trợ từ'], ['过', '(đã từng); qua, trải qua', 'trợ từ'],
+  ['是', 'là', 'động từ'], ['有', 'có', 'động từ'], ['在', 'ở, đang', 'động từ'], ['不', 'không', 'phó từ'], ['没', 'chưa, không (có)', 'phó từ'],
+  ['没有', 'không có, chưa', 'động từ'], ['很', 'rất', 'phó từ'], ['也', 'cũng', 'phó từ'], ['都', 'đều', 'phó từ'], ['还', 'còn, vẫn', 'phó từ'],
+  ['就', 'thì, liền', 'phó từ'], ['才', 'mới', 'phó từ'], ['太', 'quá', 'phó từ'], ['最', 'nhất', 'phó từ'], ['再', 'lại, nữa', 'phó từ'],
+  ['又', 'lại (đã lặp)', 'phó từ'], ['已经', 'đã', 'phó từ'], ['一直', 'luôn, thẳng', 'phó từ'], ['可能', 'có thể, có lẽ', 'phó từ'], ['一定', 'nhất định', 'phó từ'],
+  ['去', 'đi', 'động từ'], ['来', 'đến', 'động từ'], ['看', 'xem, nhìn', 'động từ'], ['说', 'nói', 'động từ'], ['听', 'nghe', 'động từ'],
+  ['吃', 'ăn', 'động từ'], ['喝', 'uống', 'động từ'], ['做', 'làm', 'động từ'], ['写', 'viết', 'động từ'], ['坐', 'ngồi, đi (xe)', 'động từ'],
+  ['要', 'muốn, cần, phải', 'động từ'], ['想', 'muốn, nghĩ', 'động từ'], ['想要', 'muốn có', 'động từ'], ['能', 'có thể (khả năng)', 'động từ'], ['可以', 'có thể, được', 'động từ'],
+  ['会', 'biết, sẽ', 'động từ'], ['给', 'cho, đưa', 'động từ'], ['找', 'tìm', 'động từ'], ['拿', 'cầm, lấy', 'động từ'], ['走', 'đi bộ, đi', 'động từ'],
+  ['等', 'đợi', 'động từ'], ['问', 'hỏi', 'động từ'], ['叫', 'gọi, tên là', 'động từ'], ['知道', 'biết', 'động từ'], ['觉得', 'cảm thấy', 'động từ'],
+  ['喜欢', 'thích', 'động từ'], ['明白', 'hiểu', 'động từ'], ['开始', 'bắt đầu', 'động từ'], ['帮', 'giúp', 'động từ'], ['送', 'tặng, tiễn', 'động từ'],
+  ['买', 'mua', 'động từ'], ['住', 'ở, cư trú', 'động từ'], ['睡', 'ngủ', 'động từ'], ['玩', 'chơi', 'động từ'], ['回', 'về, trở lại', 'động từ'],
+  ['好', 'tốt, được', 'tính từ'], ['大', 'to, lớn', 'tính từ'], ['小', 'nhỏ', 'tính từ'], ['多', 'nhiều', 'tính từ'], ['少', 'ít', 'tính từ'],
+  ['高兴', 'vui', 'tính từ'], ['漂亮', 'đẹp', 'tính từ'], ['冷', 'lạnh', 'tính từ'], ['热', 'nóng', 'tính từ'], ['累', 'mệt', 'tính từ'],
+  ['新', 'mới', 'tính từ'], ['旧', 'cũ', 'tính từ'], ['远', 'xa', 'tính từ'], ['快', 'nhanh', 'tính từ'], ['慢', 'chậm', 'tính từ'],
+  ['一', 'một', 'số từ'], ['二', 'hai', 'số từ'], ['两', 'hai (đếm)', 'số từ'], ['三', 'ba', 'số từ'], ['四', 'bốn', 'số từ'], ['五', 'năm', 'số từ'],
+  ['六', 'sáu', 'số từ'], ['七', 'bảy', 'số từ'], ['八', 'tám', 'số từ'], ['九', 'chín', 'số từ'], ['十', 'mười', 'số từ'], ['百', 'trăm', 'số từ'],
+  ['个', 'cái, người (lượng từ chung)', 'lượng từ'], ['块', 'tệ; miếng', 'lượng từ'], ['杯', 'ly, cốc', 'lượng từ'], ['本', 'quyển', 'lượng từ'], ['张', 'tấm, tờ', 'lượng từ'],
+  ['位', 'vị (lượng từ lịch sự)', 'lượng từ'], ['天', 'ngày; trời', 'danh từ'], ['年', 'năm', 'danh từ'], ['钱', 'tiền', 'danh từ'], ['人', 'người', 'danh từ'],
+  ['家', 'nhà', 'danh từ'], ['手机', 'điện thoại di động', 'danh từ'], ['朋友', 'bạn bè', 'danh từ'], ['东西', 'đồ vật, đồ', 'danh từ'], ['时间', 'thời gian', 'danh từ'],
+  ['今天', 'hôm nay', 'danh từ'], ['明天', 'ngày mai', 'danh từ'], ['昨天', 'hôm qua', 'danh từ'], ['现在', 'bây giờ', 'danh từ'], ['早上', 'buổi sáng', 'danh từ'],
+  ['晚上', 'buổi tối', 'danh từ'], ['上', 'trên; lên', 'danh từ'], ['下', 'dưới; xuống', 'danh từ'], ['里', 'trong', 'danh từ'], ['外面', 'bên ngoài', 'danh từ'],
+  ['和', 'và', 'liên từ'], ['但是', 'nhưng', 'liên từ'], ['可是', 'nhưng mà', 'liên từ'], ['因为', 'bởi vì', 'liên từ'], ['所以', 'cho nên', 'liên từ'],
+  ['如果', 'nếu', 'liên từ'], ['还是', 'hay là', 'liên từ'], ['从', 'từ', 'giới từ'], ['到', 'đến', 'giới từ'], ['对', 'đúng; với', 'tính từ'],
+  ['谢谢', 'cảm ơn', 'động từ'], ['再见', 'tạm biệt', 'cụm từ'], ['请', 'xin, mời', 'động từ'], ['请问', 'xin hỏi', 'động từ'], ['好的', 'được thôi', 'cụm từ'],
+];

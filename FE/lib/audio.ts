@@ -86,9 +86,24 @@ export interface PlayOpts {
   onEnd?: () => void;
 }
 
+// Bảng chữ → khóa file âm thanh của từ vựng (nạp một lần). Nhờ đó mọi nút nghe một từ tự dùng file Azure trên R2.
+let wordKeys: Record<string, string> = {};
+let wordKeysLoaded = false;
+export function loadWordAudio(fetcher: () => Promise<Record<string, string>>) {
+  if (wordKeysLoaded) return;
+  wordKeysLoaded = true;
+  fetcher()
+    .then((m) => {
+      wordKeys = m;
+    })
+    .catch(() => {
+      wordKeysLoaded = false;
+    });
+}
+
 /** Phát một đoạn chữ Hán: ưu tiên file, không có thì giọng trình duyệt. Trả về hàm dừng. */
 export function play(text: string, key: string | null | undefined, o: PlayOpts = {}) {
-  const url = audioUrl(key);
+  const url = audioUrl(key ?? wordKeys[text]);
   const rate = o.slow ? SLOW_RATE : 1;
   if (url) {
     const a = element();

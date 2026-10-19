@@ -34,6 +34,15 @@ function arrow(median: number[][]) {
   return <polygon className="s-arrow" points={pts.map((p) => p.join(',')).join(' ')} />;
 }
 
+interface HintWriter {
+  quiz: (o: unknown) => void;
+  cancelQuiz?: () => void;
+  highlightStroke?: (n: number, o?: unknown) => void;
+  animateStroke?: (n: number, o?: unknown) => void;
+  showCharacter?: (o?: unknown) => void;
+  hideCharacter?: (o?: unknown) => void;
+}
+
 export default function Stroke({ word }: { word: string }) {
   const chars = [...word].filter((c) => /[一-鿿]/.test(c));
   const [ci, setCi] = useState(0);
@@ -45,7 +54,12 @@ export default function Stroke({ word }: { word: string }) {
   const [playing, setPlaying] = useState(false);
   const [done, setDone] = useState<{ ok: number; miss: number } | null>(null);
   const box = useRef<HTMLDivElement | null>(null);
-  const writer = useRef<{ quiz: (o: unknown) => void; cancelQuiz?: () => void } | null>(null);
+  const writer = useRef<HintWriter | null>(null);
+  // Gợi ý từng bước khi tập viết: nét kế tiếp cần viết và đã xin gợi ý mấy bước cho nét đó.
+  const [nextStroke, setNextStroke] = useState(0);
+  const [hintStep, setHintStep] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [hintMsg, setHintMsg] = useState('');
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -83,6 +97,10 @@ export default function Stroke({ word }: { word: string }) {
     const HanziWriter = mod.default;
     box.current.innerHTML = '';
     setDone(null);
+    setNextStroke(0);
+    setHintStep(0);
+    setHintsUsed(0);
+    setHintMsg('');
     const w = HanziWriter.create(box.current, char, {
       width: 320,
       height: 320,
@@ -96,8 +114,13 @@ export default function Stroke({ word }: { word: string }) {
       drawingColor: getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#0E7466',
       drawingWidth: 28,
     });
-    writer.current = w as unknown as { quiz: (o: unknown) => void; cancelQuiz?: () => void };
+    writer.current = w as unknown as HintWriter;
     w.quiz({
+      onCorrectStroke: (r: { strokeNum: number }) => {
+        setNextStroke(r.strokeNum + 1);
+        setHintStep(0);
+        setHintMsg('');
+      },
       onComplete: (res: { totalMistakes: number }) =>
         setDone({ ok: 1, miss: res.totalMistakes }),
     });
@@ -111,6 +134,30 @@ export default function Stroke({ word }: { word: string }) {
     }
     startQuiz();
   }, [mode, startQuiz]);
+
+  // Gợi ý tăng dần cho nét kế tiếp: 1) chớp sáng vị trí, 2) chạy thử nét, 3) hiện cả chữ trong giây lát.
+  const askHint = () => {
+    const w = writer.current;
+    if (!w) return;
+    const step = Math.min(hintStep + 1, 3);
+    setHintStep(step);
+    setHintsUsed((h) => h + 1);
+    try {
+      if (step === 1) {
+        w.highlightStroke?.(nextStroke);
+        setHintMsg('Nét vừa chớp sáng là nét cần viết tiếp theo.');
+      } else if (step === 2) {
+        w.animateStroke?.(nextStroke);
+        setHintMsg('Xem nét chạy: bắt đầu từ chấm đầu, đi theo hướng nét.');
+      } else {
+        w.showCharacter?.();
+        window.setTimeout(() => w.hideCharacter?.(), 1500);
+        setHintMsg('Chữ hiện lên một chút. Nhìn kỹ rồi viết nét tiếp theo nhé.');
+      }
+    } catch {
+      setHintMsg('Chưa gợi ý được lúc này, thử viết lại nhé.');
+    }
+  };
 
   const n = data?.strokes.length ?? 0;
   const shown = Math.min(cur, n);
@@ -230,9 +277,22 @@ export default function Stroke({ word }: { word: string }) {
               Viết lại
             </button>
           </div>
+          {!done ? (
+            <div className="card stack" style={{ gap: 8 }}>
+              <div className="row between">
+                <span className="pill">{n ? `Đang viết nét ${Math.min(nextStroke + 1, n)}/${n}` : 'Đang tải nét…'}</span>
+                <span className="muted" style={{ fontSize: 13 }}>Đã xin gợi ý: {hintsUsed}</span>
+              </div>
+              <button className="btn primary sm" onClick={askHint} disabled={!data || nextStroke >= n}>
+                {hintStep === 0 ? 'Quên rồi? Gợi ý nét tiếp theo' : hintStep === 1 ? 'Chưa rõ? Xem nét chạy' : 'Vẫn chưa nhớ? Hiện cả chữ giây lát'}
+              </button>
+              {hintMsg ? <p className="muted" style={{ fontSize: 13 }} role="status">{hintMsg}</p> : null}
+              <p className="muted" style={{ fontSize: 12 }}>Viết sai 2 lần liên tiếp thì máy tự gợi ý nét đó.</p>
+            </div>
+          ) : null}
           {done ? (
             <div className="alert" style={{ borderColor: 'var(--good)', background: 'var(--goodbg)' }}>
-              Viết xong chữ {char}. Số lần sai: {done.miss}.
+              Viết xong chữ {char}. Số lần sai: {done.miss}. Số lần xin gợi ý: {hintsUsed}.
             </div>
           ) : null}
         </>

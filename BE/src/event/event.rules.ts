@@ -92,7 +92,7 @@ export const DAILY = {
 } as const;
 
 /** Bit nhiệm vụ ngày đã nhận. */
-export const BIT = { login: 1, lessons: 2, online: 4 } as const;
+export const BIT = { login: 1, lessons: 2, online: 4, practice: 8 } as const;
 
 export interface WeeklyTask {
   key: 'login' | 'online' | 'lessons';

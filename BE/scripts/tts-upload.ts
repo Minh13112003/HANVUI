@@ -7,22 +7,21 @@
 //   pnpm audio --all                làm mọi bài đã công khai
 //   pnpm audio --all --force        làm lại cả những câu đã có file
 //
-// Giọng đọc giai đoạn dựng và thử: edge-tts (không chính thức, không cần tài khoản — rule.md "CHỐT TẠM").
-// Trước khi phát hành phải đổi sang dịch vụ có hợp đồng (Azure/Google) và tạo lại toàn bộ:
-// vì tên nhà cung cấp nằm trong audioHash nên đổi là script tự sinh lại.
+// Nhà cung cấp giọng đọc: Azure Speech nếu đã có AZURE_SPEECH_KEY (hoặc TTS_PROVIDER=azure), không thì edge-tts (tạm).
+// Tên nhà cung cấp nằm trong audioHash nên đổi sang Azure là script tự sinh lại, rồi `--prune` dọn file cũ trên R2.
+//   pnpm audio --prune              liệt kê file trên R2 không còn ai dùng (chỉ xem)
+//   pnpm audio --prune --yes        xóa các file đó
 import '../src/config/dotenv.js';
-import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, HeadBucketCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { PAUSE_MS, PROVIDER, hashOf as hashWith, synth, usedThisMonth } from './lib/tts.js';
 
-const PROVIDER = 'edge-tts';
 const DEFAULT_VOICE = 'zh-CN-XiaoxiaoNeural';
-const PAUSE_MS = 350; // edge-tts là dịch vụ không chính thức: đi chậm cho lành
 
 const env = (k: string, fallback?: string) => {
   const v = process.env[k]?.trim();
@@ -43,19 +42,49 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: env(
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Khóa file đổi khi nội dung, giọng, cao độ hoặc nhà cung cấp đổi → tự sinh lại. */
-const hashOf = (zh: string, voice: string, pitch: string) =>
-  createHash('sha256').update(`${PROVIDER}|${voice}|${pitch}|${zh}`).digest('hex').slice(0, 12);
+const hashOf = (zh: string, voice: string, pitch: string) => hashWith(createHash, zh, voice, pitch);
 
-async function edgeTts(text: string, voice: string, pitch: string, out: string) {
-  const args = ['-m', 'edge_tts', '--voice', voice, '--text', text, '--write-media', out];
-  if (pitch !== '+0Hz') args.push('--pitch', pitch);
-  await new Promise<void>((resolve, reject) => {
-    const p = spawn('python', args, { stdio: ['ignore', 'ignore', 'pipe'] });
-    let err = '';
-    p.stderr.on('data', (d) => (err += String(d)));
-    p.on('error', reject);
-    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`edge-tts lỗi (${code}): ${err.trim().slice(0, 300)}`))));
-  });
+/** Mọi khóa file âm thanh còn được dùng: câu thoại, từ vựng và câu nghe của đề thi. */
+async function usedKeys(): Promise<Set<string>> {
+  const lines = await prisma.lessonLine.findMany({ where: { audioKey: { not: null } }, select: { audioKey: true } });
+  const used = new Set(lines.map((l) => l.audioKey!));
+  for (const w of await prisma.word.findMany({ where: { audioKey: { not: null } }, select: { audioKey: true } })) used.add(w.audioKey!);
+  for (const e of await prisma.exam.findMany({ select: { sections: true } })) {
+    for (const sec of e.sections as unknown as { questions: { audio?: { key: string }[] }[] }[]) {
+      for (const q of sec.questions) q.audio?.forEach((a) => used.add(a.key));
+    }
+  }
+  return used;
+}
+
+async function listR2(): Promise<Map<string, number>> {
+  const keys = new Map<string, number>();
+  let token: string | undefined;
+  do {
+    const r = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: 'audio/', ContinuationToken: token }));
+    (r.Contents ?? []).forEach((o) => keys.set(o.Key!, o.Size ?? 0));
+    token = r.IsTruncated ? r.NextContinuationToken : undefined;
+  } while (token);
+  return keys;
+}
+
+/** Dọn file rác: chỉ xóa file KHÔNG còn khóa nào trong DB trỏ tới. Không có --yes thì chỉ liệt kê. */
+async function prune(yes: boolean) {
+  const used = await usedKeys();
+  const keys = await listR2();
+  const orphan = [...keys.keys()].filter((k) => !used.has(k));
+  const mb = orphan.reduce((s, k) => s + (keys.get(k) ?? 0), 0) / 1024 / 1024;
+  console.log(`R2 có ${keys.size} file, DB đang dùng ${used.size}; không ai dùng: ${orphan.length} file (${mb.toFixed(2)} MB).`);
+  orphan.slice(0, 8).forEach((k) => console.log('   -', k));
+  if (!orphan.length) return;
+  if (!yes) {
+    console.log('Chỉ xem. Muốn xóa thật: pnpm audio --prune --yes');
+    return;
+  }
+  for (let i = 0; i < orphan.length; i += 1000) {
+    await s3.send(new DeleteObjectsCommand({ Bucket: BUCKET, Delete: { Objects: orphan.slice(i, i + 1000).map((Key) => ({ Key })), Quiet: true } }));
+  }
+  console.log(`✓ Đã xóa ${orphan.length} file không còn dùng.`);
 }
 
 async function check() {
@@ -92,7 +121,7 @@ async function verify() {
   const total = [...keys.values()].reduce((s, n) => s + n, 0);
   console.log(`R2: ${keys.size} file trong audio/, tổng ${(total / 1024 / 1024).toFixed(2)} MB.`);
 
-  const used = new Set(lines.map((l) => l.audioKey).filter(Boolean) as string[]);
+  const used = await usedKeys();
   const notOnR2 = [...used].filter((k) => !keys.has(k));
   const orphan = [...keys.keys()].filter((k) => !used.has(k));
   console.log(notOnR2.length ? `! ${notOnR2.length} khóa trong DB không có trên R2:` : '✓ Mọi khóa trong DB đều có file trên R2.');
@@ -112,6 +141,10 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--check')) {
     await check();
+    return;
+  }
+  if (args.includes('--prune')) {
+    await prune(args.includes('--yes'));
     return;
   }
   if (args.includes('--verify')) {
@@ -156,7 +189,7 @@ async function main() {
         }
         const key = `audio/${lesson.id}/${String(line.idx).padStart(2, '0')}-${voice}-${hash}.mp3`;
         const tmp = join(dir, 'line.mp3');
-        await edgeTts(line.zh, voice, pitch, tmp);
+        await synth(line.zh, voice, pitch, tmp);
         const body = await readFile(tmp);
         await s3.send(
           new PutObjectCommand({

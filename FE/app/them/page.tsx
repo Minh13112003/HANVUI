@@ -10,6 +10,9 @@ import { useUi } from '@/lib/ui';
 
 type Theme = 'auto' | 'light' | 'dark';
 
+/** Quy đổi gần đúng HSK 3.0 → 2.0 (xem BE/src/common/hsk.ts). */
+const HSK3_TO_HSK2 = [2, 3, 4, 5, 6, 6, 6, 6, 6];
+
 export default function MorePage() {
   const { user, setUser, signOut } = useAuth();
   const { toast } = useUi();
@@ -90,6 +93,25 @@ export default function MorePage() {
             </div>
             <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
               Đổi chuẩn chỉ đổi cách lọc và nhãn hiển thị. Hai chuẩn không tương ứng 1-1.
+            </p>
+          </div>
+
+          <div className="stack" style={{ gap: 6 }}>
+            <span className="eyebrow2">Thử nhanh cấp (bản demo, không cần thi)</span>
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn sm" disabled={busy || (user?.hskLevel ?? 1) <= 1} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) - 1 })}>
+                ▼ Hạ cấp
+              </button>
+              <span className="pill grow" style={{ textAlign: 'center' }}>
+                {user?.hskStandard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0'} · cấp {user?.hskLevel}
+                {user?.hskStandard === 'HSK3' ? ` ≈ HSK 2.0 cấp ${HSK3_TO_HSK2[Math.min(user.hskLevel, 9) - 1]}` : ''}
+              </span>
+              <button className="btn primary sm" disabled={busy || (user?.hskLevel ?? 1) >= levels} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) + 1 })}>
+                ▲ Lên cấp
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: 12 }}>
+              Dùng song song với làm đề thi để thử khóa/mở bài. Bản thật sẽ bỏ nút này, chỉ lên cấp khi thi đạt.
             </p>
           </div>
 

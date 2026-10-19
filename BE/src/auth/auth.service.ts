@@ -1,10 +1,13 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { loadEnv } from '../config/env.js';
+import { MissionService } from '../event/mission.service.js';
+import { MailService } from '../mailbox/mail.service.js';
 import type { User } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { mediaUrl } from '../media/media-url.js';
 import type { LoginDto, RegisterDto, UpdateMeDto } from './auth.dto.js';
 
 const BCRYPT_ROUNDS = 12;
@@ -19,6 +22,7 @@ export interface PublicUser {
   hskStandard: User['hskStandard'];
   hskLevel: number;
   isVip: boolean;
+  avatarUrl: string | null;
 }
 
 export interface TokenPair {
@@ -35,7 +39,28 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly missions: MissionService,
+    private readonly mail: MailService,
   ) {}
+
+  private readonly log = new Logger(AuthService.name);
+
+  /** Việc làm một lần cho tài khoản mới: tặng lượt (bản demo) và thư chào mừng. Lỗi ở đây không làm hỏng đăng ký. */
+  private async onboard(userId: string, displayName: string) {
+    try {
+      const n = await this.missions.grantStarter(userId);
+      await this.mail.sendSystem(
+        userId,
+        'Chào mừng bạn đến với HanVui',
+        `Chào ${displayName}! Mỗi ngày hãy nghe vài bài hội thoại, lưu từ mới vào Sổ tay và thử sức với sự kiện truyện.` +
+          (n ? `
+
+Bản demo tặng bạn ${n} lượt gợi ý để thử mọi tính năng.` : ''),
+      );
+    } catch (e) {
+      this.log.error(`Không hoàn tất bước chào tài khoản mới ${userId}: ${(e as Error).message}`);
+    }
+  }
 
   toPublic(u: User): PublicUser {
     return {
@@ -46,6 +71,7 @@ export class AuthService {
       hskStandard: u.hskStandard,
       hskLevel: u.hskLevel,
       isVip: !!u.vipUntil && u.vipUntil.getTime() > Date.now(),
+      avatarUrl: mediaUrl(u.avatarId, 'avatar'),
     };
   }
 
@@ -61,6 +87,7 @@ export class AuthService {
         displayName: dto.displayName,
       },
     });
+    await this.onboard(user.id, user.displayName);
     return { user: this.toPublic(user), ...(await this.issue(user, randomUUID(), userAgent)) };
   }
 
