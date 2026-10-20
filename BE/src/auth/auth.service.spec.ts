@@ -58,7 +58,7 @@ describe('AuthService', () => {
     prisma = fakePrisma();
     const jwt = new JwtService({ secret: 'x'.repeat(40), signOptions: { expiresIn: 60 } });
     const missions = { grantStarter: async () => 0 };
-    const mail = { sendSystem: async () => ({}) };
+    const mail = { sendSystem: async () => ({}), sendWelcomeCampaigns: async () => 0 };
     svc = new AuthService(prisma as any, jwt, missions as any, mail as any);
   });
 

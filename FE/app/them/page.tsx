@@ -1,12 +1,15 @@
 'use client';
-// Thêm: tài khoản, chuẩn và cấp HSK, VIP, túi đồ, luật sự kiện, hướng dẫn, giao diện sáng/tối.
+// Tài khoản: hồ sơ, chuẩn và cấp HSK, làm đề lên cấp, nhập mã quà, giao diện, túi đồ, luật sự kiện, hướng dẫn.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import RewardDialog, { type RewardInfo } from '@/components/RewardDialog';
 import Shell from '@/components/Shell';
-import { authApi } from '@/lib/api';
+import { api, authApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { levelName, standardName } from '@/lib/text';
 import { useUi } from '@/lib/ui';
+import type { MailCounts } from '@/lib/types';
 
 type Theme = 'auto' | 'light' | 'dark';
 
@@ -19,6 +22,16 @@ export default function MorePage() {
   const router = useRouter();
   const [theme, setTheme] = useState<Theme>('auto');
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [reward, setReward] = useState<RewardInfo | null>(null);
+  const [mail, setMail] = useState<MailCounts | null>(null);
+
+  useEffect(() => {
+    api<MailCounts>('/mailbox/counts')
+      .then(setMail)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setTheme((localStorage.getItem('hv.theme') as Theme) || 'auto');
@@ -32,6 +45,21 @@ export default function MorePage() {
   };
 
   const levels = user?.hskStandard === 'HSK3' ? 9 : 6;
+  const std = user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2';
+  const levelLabel = `${standardName(std)} · ${levelName(std, user?.hskLevel ?? 1)}`;
+
+  const redeem = async () => {
+    setRedeeming(true);
+    try {
+      const r = await api<{ tokens: number }>('/redeem', { method: 'POST', body: { code } });
+      setReward({ source: 'Mã quà ' + code.replace(/\s+/g, '').toUpperCase(), tokens: r.tokens });
+      setCode('');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Không nhận được quà');
+    } finally {
+      setRedeeming(false);
+    }
+  };
 
   const patch = async (body: { hskStandard?: string; hskLevel?: number }) => {
     setBusy(true);
@@ -46,7 +74,7 @@ export default function MorePage() {
   };
 
   return (
-    <Shell title="Thêm">
+    <Shell title="Tài khoản">
       <div className="stack">
         <section className="surf" data-g="jade">
           <span className="wm" aria-hidden="true">
@@ -63,9 +91,27 @@ export default function MorePage() {
             <span className="hpill">{user?.isVip ? 'VIP' : 'Thường'}</span>
           </div>
           <span className="hsub">
-            {user?.hskStandard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0'} · cấp {user?.hskLevel}
+            {levelLabel}
           </span>
         </section>
+
+        <Link className="card row" href="/them/hop-thu" style={{ gap: 12 }}>
+          <span className="mail-av han" data-s="ADMIN" aria-hidden="true">
+            信
+          </span>
+          <span className="grow">
+            <b>Hộp thư</b>
+            <small className="muted" style={{ display: 'block' }}>
+              {mail?.unclaimed ? `${mail.unclaimed} thư có quà chưa nhận` : 'Thư từ quản trị viên và hệ thống'}
+            </small>
+          </span>
+          {mail?.unread ? (
+            <span className="badge-n" aria-label={`${mail.unread} thư chưa đọc`}>
+              {mail.unread}
+            </span>
+          ) : null}
+          <span className="chev">›</span>
+        </Link>
 
         <section className="card stack">
 
@@ -79,7 +125,7 @@ export default function MorePage() {
                 disabled={busy}
                 onClick={() => patch({ hskStandard: 'HSK2' })}
               >
-                HSK 2.0 <small>6 cấp</small>
+                HSK 2.0 <small>HSK 1–6</small>
               </button>
               <button
                 className={user?.hskStandard === 'HSK3' ? 'on' : ''}
@@ -88,11 +134,11 @@ export default function MorePage() {
                 disabled={busy}
                 onClick={() => patch({ hskStandard: 'HSK3' })}
               >
-                HSK 3.0 <small>9 cấp</small>
+                HSK 3.0 <small>Sơ · Trung · Cao</small>
               </button>
             </div>
             <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              Đổi chuẩn chỉ đổi cách lọc và nhãn hiển thị. Hai chuẩn không tương ứng 1-1.
+              HSK 2.0 gọi HSK 1–6; HSK 3.0 gọi Sơ cấp 1–3, Trung cấp 1–3, Cao cấp 1–3. Hai chuẩn không tương ứng 1-1. Nội dung hiện soạn đầy đủ tới HSK 3 (HSK 2.0).
             </p>
           </div>
 
@@ -103,8 +149,8 @@ export default function MorePage() {
                 ▼ Hạ cấp
               </button>
               <span className="pill grow" style={{ textAlign: 'center' }}>
-                {user?.hskStandard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0'} · cấp {user?.hskLevel}
-                {user?.hskStandard === 'HSK3' ? ` ≈ HSK 2.0 cấp ${HSK3_TO_HSK2[Math.min(user.hskLevel, 9) - 1]}` : ''}
+                {levelLabel}
+                {user?.hskStandard === 'HSK3' ? ` ≈ ${levelName('HSK2', HSK3_TO_HSK2[Math.min(user.hskLevel, 9) - 1])} (HSK 2.0)` : ''}
               </span>
               <button className="btn primary sm" disabled={busy || (user?.hskLevel ?? 1) >= levels} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) + 1 })}>
                 ▲ Lên cấp
@@ -120,7 +166,7 @@ export default function MorePage() {
             <select value={user?.hskLevel ?? 1} disabled={busy} onChange={(e) => patch({ hskLevel: Number(e.target.value) })}>
               {Array.from({ length: levels }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
-                  Cấp {n}
+                  {levelName(user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', n)}
                 </option>
               ))}
             </select>
@@ -128,14 +174,44 @@ export default function MorePage() {
         </section>
 
         <section className="card stack">
-          <span className="eyebrow2">Giao diện</span>
-          <div className="seg" role="tablist" aria-label="Giao diện">
-            {(['auto', 'light', 'dark'] as Theme[]).map((t) => (
-              <button key={t} className={theme === t ? 'on' : ''} role="tab" aria-selected={theme === t} onClick={() => applyTheme(t)}>
-                {t === 'auto' ? 'Theo máy' : t === 'light' ? 'Sáng' : 'Tối'}
-              </button>
-            ))}
+          <span className="eyebrow2">Làm đề nâng cấp HSK</span>
+          <p className="muted" style={{ fontSize: 13 }}>
+            Thi thử theo định dạng HSK. Đạt đề của đúng cấp hiện tại ({levelLabel}) thì lên cấp kế.
+          </p>
+          <Link className="btn primary" href="/them/thi" style={{ textAlign: 'center' }}>
+            Làm đề lên cấp
+          </Link>
+        </section>
+
+        <section className="card stack">
+          <span className="eyebrow2">Nhập mã quà</span>
+          <div className="row" style={{ gap: 8 }}>
+            <label className="field grow" style={{ margin: 0 }}>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Nhập mã, ví dụ ABC123"
+                autoCapitalize="characters"
+                autoComplete="off"
+                aria-label="Mã quà"
+              />
+            </label>
+            <button className="btn primary" disabled={redeeming || !code.trim()} onClick={redeem}>
+              Nhận
+            </button>
           </div>
+          <small className="muted">Nhập đúng mã sẽ nhận quà (lượt gợi ý). Mỗi mã dùng một lần cho mỗi tài khoản.</small>
+        </section>
+
+        <section className="card stack">
+          <label className="field">
+            Giao diện
+            <select value={theme} onChange={(e) => applyTheme(e.target.value as Theme)}>
+              <option value="auto">Theo máy</option>
+              <option value="light">Sáng</option>
+              <option value="dark">Tối</option>
+            </select>
+          </label>
         </section>
 
         <div className="menu">
@@ -160,8 +236,7 @@ export default function MorePage() {
         <section className="card stack">
           <b>Gói VIP</b>
           <p className="muted" style={{ fontSize: 13 }}>
-            VIP chỉ mở khóa tính năng giúp học dễ hơn, <b>không có tác dụng trong sự kiện</b> (app không pay-to-win).
-            Giá gói và danh sách tính năng chưa chốt.
+            Đang trong quá trình nghiên cứu để bào người dùng, sẽ ra mắt sau.
           </p>
         </section>
 
@@ -175,6 +250,7 @@ export default function MorePage() {
           Đăng xuất
         </button>
       </div>
+      <RewardDialog info={reward} onClose={() => setReward(null)} />
     </Shell>
   );
 }

@@ -4,15 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import type { WritingBatch, WritingCheck, WritingItem } from '@/lib/types';
 
-type Kind = 'ORDER' | 'FILL' | 'CHOOSE';
+type Kind = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
 
 const TITLE: Record<Kind, string> = {
   ORDER: 'Sắp xếp thành câu đúng',
   FILL: 'Điền chữ còn thiếu',
   CHOOSE: 'Chọn câu tiếng Trung đúng nghĩa',
+  WRONG: 'Tìm câu SAI ngữ pháp',
 };
 
-export default function WritePractice({ kind }: { kind: Kind }) {
+/** Làm một bộ bài: lấy ngẫu nhiên theo dạng (`kind`) hoặc dùng sẵn danh sách `items` (bài luyện của một điểm ngữ pháp). */
+export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; items?: WritingItem[]; onFinish?: () => void }) {
   const [batch, setBatch] = useState<WritingBatch | null>(null);
   const [n, setN] = useState(0);
   const [score, setScore] = useState(0);
@@ -28,11 +30,12 @@ export default function WritePractice({ kind }: { kind: Kind }) {
     setRes(null);
     setErr('');
     try {
-      setBatch(await api<WritingBatch>('/writing?type=' + kind + '&count=8'));
+      if (items) setBatch({ items, lockedCount: 0, level: 0 });
+      else setBatch(await api<WritingBatch>('/writing?type=' + kind + '&count=8'));
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Không tải được bài tập');
     }
-  }, [kind]);
+  }, [kind, items]);
   useEffect(() => {
     load();
   }, [load]);
@@ -65,8 +68,13 @@ export default function WritePractice({ kind }: { kind: Kind }) {
           Xong! Đúng {score}/{batch.items.length} câu
         </h2>
         <button className="btn primary" onClick={load}>
-          Làm bộ khác
+          {items ? 'Làm lại' : 'Làm bộ khác'}
         </button>
+        {onFinish ? (
+          <button className="btn" onClick={onFinish}>
+            Về danh sách ngữ pháp
+          </button>
+        ) : null}
         {batch.lockedCount ? <p className="muted">Còn {batch.lockedCount} bài khóa ở cấp cao hơn, lên cấp để mở.</p> : null}
       </div>
     );
@@ -74,21 +82,27 @@ export default function WritePractice({ kind }: { kind: Kind }) {
 
   const verdict = res ? (
     <div className="alert" style={{ borderColor: res.correct ? 'var(--good)' : 'var(--bad)', background: res.correct ? 'var(--goodbg)' : 'var(--badbg)' }}>
-      {res.correct ? 'Đúng rồi.' : 'Chưa đúng. Đáp án: ' + res.sentence}
+      {item.type === 'WRONG'
+        ? res.correct
+          ? 'Đúng rồi, đây là câu sai ngữ pháp.'
+          : 'Chưa đúng. Câu sai là: ' + res.sentence
+        : res.correct
+          ? 'Đúng rồi.'
+          : 'Chưa đúng. Đáp án: ' + res.sentence}
     </div>
   ) : null;
 
   return (
     <div className="card stack">
       <div className="row between">
-        <b>{TITLE[kind]}</b>
+        <b>{TITLE[item.type]}</b>
         <span className="pill">
           {n + 1}/{batch.items.length} · HSK {item.level}
         </span>
       </div>
       <p className="muted">{item.vi}</p>
 
-      {kind === 'ORDER' && item.tiles ? (
+      {item.type === 'ORDER' && item.tiles ? (
         <>
           <div className="ansrow">
             {picked.map((p, i) => (
@@ -116,7 +130,7 @@ export default function WritePractice({ kind }: { kind: Kind }) {
         </>
       ) : null}
 
-      {kind === 'FILL' && item.parts && item.options ? (
+      {item.type === 'FILL' && item.parts && item.options ? (
         <>
           <div className="tkrow" style={{ fontSize: 26 }}>
             {item.parts.map((z, i) => (
@@ -140,7 +154,7 @@ export default function WritePractice({ kind }: { kind: Kind }) {
         </>
       ) : null}
 
-      {kind === 'CHOOSE' && item.options ? (
+      {(item.type === 'CHOOSE' || item.type === 'WRONG') && item.options ? (
         <>
           <div className="optgrid">
             {item.options.map((o) => (

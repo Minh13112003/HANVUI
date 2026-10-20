@@ -23,11 +23,26 @@ export function plainPinyin(s: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-/** Nhãn song song hai chuẩn: "2.0·1 | 3.0·2" (rule.md mục 2). */
+/** Tên cấp dễ phân biệt hai chuẩn: HSK 2.0 gọi "HSK 1…6"; HSK 3.0 gọi theo giai đoạn "Sơ cấp 1-3", "Trung cấp 1-3", "Cao cấp 1-3". */
+export function levelName(standard: 'HSK2' | 'HSK3', level: number): string {
+  if (standard === 'HSK2') return 'HSK ' + level;
+  if (level <= 3) return 'Sơ cấp ' + level;
+  if (level <= 6) return 'Trung cấp ' + (level - 3);
+  return 'Cao cấp ' + (level - 6);
+}
+
+/** Tên chuẩn kèm cách gọi cấp, ví dụ "HSK 2.0 (HSK 1-6)". */
+export const standardName = (standard: 'HSK2' | 'HSK3') => (standard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0');
+
+/** Nhãn song song hai chuẩn, ví dụ "HSK 5 | Trung cấp 1" = cấp 5 của HSK 2.0 và Trung cấp 1 (cấp 4) của HSK 3.0 (rule.md mục 2). */
 export function hskLabel(hsk2: number | null | undefined, hsk3: number | null | undefined): string {
-  const a = hsk2 ? '2.0·' + hsk2 : '2.0·—';
-  const b = hsk3 ? '3.0·' + hsk3 : '3.0·—';
-  return a + ' | ' + b;
+  return (hsk2 ? levelName('HSK2', hsk2) : 'HSK —') + ' | ' + (hsk3 ? levelName('HSK3', hsk3) : '—');
+}
+
+/** Nhãn của BÀI (cấp đã soạn, không phải từ khó nhất): "HSK 2 | Sơ cấp 1". HSK 3.0 quy đổi gần đúng ngược lại với bảng 3.0→2.0. */
+export function lessonLabel(level: number): string {
+  const to3 = [1, 1, 2, 3, 4, 5, 6][Math.min(Math.max(level, 1), 7) - 1];
+  return levelName('HSK2', level) + ' | ' + levelName('HSK3', to3);
 }
 
 export const hasHan = (s: string) => /[一-鿿]/.test(s);

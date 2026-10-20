@@ -54,7 +54,7 @@ export class ContentService {
         ...(query.level ? { level: query.level } : {}),
         ...(query.topic ? { topics: { some: { topicId: query.topic } } } : {}),
       },
-      include: { topics: { include: { topic: true } }, _count: { select: { lines: true, keySlots: true } } },
+      include: { topics: { orderBy: { sort: 'asc' }, include: { topic: true } }, _count: { select: { lines: true, keySlots: true } } },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
@@ -75,9 +75,10 @@ export class ContentService {
         situation: r.situation,
         thumbUrl: mediaUrl(r.coverId, 'thumb'),
         tags: r.tags,
-        topics: r.topics.map((t) => ({ id: t.topicId, name: t.topic.name })),
+        topics: r.topics.map((t) => ({ id: t.topicId, name: t.topic.name, glyph: t.topic.glyph })),
         level: r.level,
         hsk2: r.hsk2,
+        levelShown: r.hskShown ?? r.level,
         hsk3: r.hsk3,
         twinId: r.twinId,
         lines: r._count.lines,
@@ -92,7 +93,7 @@ export class ContentService {
     const lesson = await this.prisma.lesson.findUnique({
       where: { id },
       include: {
-        topics: { include: { topic: true } },
+        topics: { orderBy: { sort: 'asc' }, include: { topic: true } },
         roles: true,
         lines: { orderBy: { idx: 'asc' } },
         questions: { orderBy: { idx: 'asc' } },
@@ -118,9 +119,10 @@ export class ContentService {
       coverUrl: mediaUrl(lesson.coverId, 'cover'),
       level: lesson.level,
       hsk2: lesson.hsk2,
+      levelShown: lesson.hskShown ?? lesson.level,
       hsk3: lesson.hsk3,
       twinId: lesson.twinId,
-      topics: lesson.topics.map((t) => ({ id: t.topicId, name: t.topic.name })),
+      topics: lesson.topics.map((t) => ({ id: t.topicId, name: t.topic.name, glyph: t.topic.glyph })),
       roles: lesson.roles.map((r) => ({
         who: r.who,
         label: r.label,

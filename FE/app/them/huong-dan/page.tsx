@@ -8,7 +8,7 @@ import { useUi } from '@/lib/ui';
 const STEPS = [
   {
     t: 'Chọn chuẩn và cấp HSK',
-    d: 'Vào Thêm → chọn HSK 2.0 (6 cấp) hoặc HSK 3.0 (9 cấp) và cấp hiện tại. Mỗi bài đều ghi nhãn cả hai chuẩn, ví dụ 2.0·1 | 3.0·2.',
+    d: 'Vào Tài khoản → chọn HSK 2.0 (6 cấp) hoặc HSK 3.0 (9 cấp) và cấp hiện tại. Mỗi bài đều ghi nhãn cả hai chuẩn, ví dụ "2.0 cấp 1 | 3.0 cấp 2" nghĩa là cấp 1 của HSK 2.0 và cấp 2 của HSK 3.0.',
   },
   {
     t: 'Từ vựng: xem cách viết và cách đọc',
@@ -33,7 +33,7 @@ const FAQ = [
   ['Vì sao app không cho biết bài này có từ khóa?', 'Nếu báo thì sự kiện mất hết phần suy luận. App không bao giờ gợi ý bài vừa học có từ khóa hay không.'],
   ['Mua lượt gợi ý được không?', 'Không bán lượt. Lượt chỉ đến từ nhiệm vụ, thưởng, gói theo kịp và đền bù.'],
   ['VIP có lợi thế trong sự kiện không?', 'Không. VIP chỉ mở khóa tính năng học, không tác động gì tới sự kiện.'],
-  ['Chưa nghe được âm thanh?', 'File âm thanh thật sẽ nằm trên Cloudflare R2, hiện chưa tạo. Tạm thời app đọc bằng giọng của trình duyệt.'],
+  ['Chưa nghe được âm thanh?', 'Kiểm tra âm lượng và kết nối mạng. Bài nào chưa có file âm thanh thì app đọc bằng giọng của trình duyệt.'],
 ];
 
 export default function GuidePage() {
@@ -121,7 +121,7 @@ export default function GuidePage() {
         </div>
 
         <Link className="btn" href="/them" style={{ textAlign: 'center' }}>
-          Về Thêm
+          Về Tài khoản
         </Link>
       </div>
     </Shell>

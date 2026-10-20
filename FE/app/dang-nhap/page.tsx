@@ -101,10 +101,6 @@ export default function SignInPage() {
               {busy ? 'Đang xử lý…' : mode === 'in' ? 'Đăng nhập' : 'Tạo tài khoản'}
             </button>
           </form>
-
-          <p className="muted" style={{ fontSize: 12 }}>
-            Cần máy chủ BE đang chạy tại {process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001/api/v1'}.
-          </p>
         </div>
       </main>
     </div>

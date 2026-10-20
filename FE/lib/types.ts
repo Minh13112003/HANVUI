@@ -38,8 +38,10 @@ export interface LessonCard {
   title: string;
   situation: string;
   tags: string[];
-  topics: { id: string; name: string }[];
+  topics: { id: string; name: string; glyph?: string | null }[];
   level: number;
+  /** Cấp hiển thị: cấp đã soạn, chỉ cao hơn khi hơn 70% từ của bài thuộc cấp cao hơn. */
+  levelShown?: number;
   hsk2: number | null;
   hsk3: number | null;
   twinId: string | null;
@@ -90,10 +92,12 @@ export interface Lesson {
   title: string;
   situation: string;
   level: number;
+  /** Cấp hiển thị: cấp đã soạn, chỉ cao hơn khi hơn 70% từ của bài thuộc cấp cao hơn. */
+  levelShown?: number;
   hsk2: number | null;
   hsk3: number | null;
   twinId: string | null;
-  topics: { id: string; name: string }[];
+  topics: { id: string; name: string; glyph?: string | null }[];
   roles: Role[];
   lines: Line[];
   questions: Question[];
@@ -140,6 +144,12 @@ export interface Hint {
   vi: string;
 }
 
+export interface HintLesson {
+  id: string;
+  title: string;
+  level: number;
+}
+
 export interface Cell {
   pos: number;
   slotId: number;
@@ -149,6 +159,8 @@ export interface Cell {
   hintGeneral?: Hint;
   hint1?: Hint | null;
   hint2?: Hint | null;
+  /** Gợi ý 2 chỉ thẳng một bài chứa từ khóa (tên bài đã che nếu trùng từ khóa). */
+  hint2Lesson?: HintLesson | null;
   hint3?: Hint | null;
   clueTopicId?: string | null;
   points?: number | null;
@@ -237,12 +249,15 @@ export interface HintResult {
   hintNo: number;
   hint: Hint | null;
   clueTopicId?: string | null;
+  hint2Lesson?: HintLesson | null;
+  /** Số lượt còn lại sau khi trừ (để cập nhật ngay). */
+  tokens?: number;
 }
 
 export interface WritingItem {
   id: number;
   level: number;
-  type: 'ORDER' | 'FILL' | 'CHOOSE';
+  type: 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
   vi: string;
   tiles?: string[];
   parts?: string[];
@@ -260,4 +275,69 @@ export interface WritingCheck {
   answer: string;
   sentence: string;
   vi: string;
+}
+
+export interface GrammarListItem {
+  slug: string;
+  level: number;
+  category: string;
+  title: string;
+  pattern: string;
+  locked: boolean;
+  fit: 'review' | 'match' | 'next' | 'far';
+  recommended: boolean;
+  mastered: boolean;
+  practice: { total: number; done: number; correct: number };
+}
+
+export interface GrammarList {
+  level: number;
+  levels: { level: number; total: number; mastered: number; locked: boolean }[];
+  readyForExam: boolean;
+  points: GrammarListItem[];
+}
+
+export interface GrammarDetail {
+  slug: string;
+  level: number;
+  category: string;
+  title: string;
+  pattern: string;
+  explain: string;
+  compare: string;
+  mistake: string;
+  examples: { zh: string; pinyin: string; vi: string }[];
+  practice: WritingItem[];
+}
+
+// ───────────── Hộp thư ─────────────
+export type MailSender = 'ADMIN' | 'SYSTEM';
+
+export interface MailItem {
+  id: number;
+  sender: MailSender;
+  subject: string;
+  preview?: string;
+  body?: string;
+  createdAt: string;
+  expiresAt: string | null;
+  hasReward: boolean;
+  reward: { tokens: number; item: 'VIP_3D' | null } | null;
+  read: boolean;
+  claimed: boolean;
+  expired: boolean;
+  claimable: boolean;
+}
+
+export interface MailCounts {
+  unread: number;
+  unclaimed: number;
+}
+
+export interface MailList {
+  page: number;
+  pageSize: number;
+  total: number;
+  items: MailItem[];
+  counts: MailCounts;
 }

@@ -4,6 +4,7 @@ import { Clock } from '../common/time.js';
 import { MissionService } from '../event/mission.service.js';
 import { VIP_ITEM_DAYS } from '../event/event.rules.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { vnDate, WELCOME_CAMPAIGNS } from './campaigns.js';
 import type { ListMailQuery, SendMailDto } from './mail.dto.js';
 
 type MailRow = Prisma.MailGetPayload<{ include: { states: true } }>;
@@ -176,6 +177,20 @@ export class MailService {
     return this.prisma.mail.create({
       data: { sender: 'SYSTEM', toUserId: userId, subject, body, rewardTokens: reward.tokens ?? 0, rewardItem: reward.item ?? null },
     });
+  }
+
+  /** Thư theo dịp (campaigns.ts) cho tài khoản vừa tạo, người gửi là quản trị. Trả số thư đã gửi. */
+  async sendWelcomeCampaigns(userId: string, name: string) {
+    const today = vnDate(this.clock.now());
+    let n = 0;
+    for (const c of WELCOME_CAMPAIGNS) {
+      if (today < c.from || today > c.until) continue;
+      await this.prisma.mail.create({
+        data: { sender: 'ADMIN', toUserId: userId, subject: c.subject, body: c.body(name), rewardTokens: c.reward?.tokens ?? 0, rewardItem: c.reward?.item ?? null },
+      });
+      n++;
+    }
+    return n;
   }
 
   // ───────────── Quản trị ─────────────

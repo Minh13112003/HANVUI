@@ -1,5 +1,6 @@
 // Gán nhãn cấp HSK song song (rule.md mục 2): điền Word.hsk2 / Word.hsk3, rồi tính nhãn của mỗi bài
-// = cấp cao nhất trong các từ của bài, theo từng chuẩn. Chạy lại được nhiều lần: pnpm db:hsk
+// = cấp cao nhất trong các từ của bài, theo từng chuẩn (Lesson.hsk2/hsk3, dùng làm chỉ số tham khảo), và Lesson.hskShown = cấp
+// HIỂN THỊ cho người học: cấp đã soạn, chỉ nâng khi hơn 70% từ của bài thuộc cấp cao hơn. Chạy lại được nhiều lần: pnpm db:hsk
 //
 // Dữ liệu cấp từ là BẢN CỘNG ĐỒNG (xem prisma/seed/hsk/README.md) — cần người biết tiếng Trung duyệt.
 import '../../src/config/dotenv.js';
@@ -72,7 +73,7 @@ async function main() {
 
   // ── Bài học: nhãn = cấp cao nhất trong các từ của bài ──
   const lessons = await prisma.lesson.findMany({
-    select: { id: true, hsk2: true, hsk3: true, lines: { select: { tokens: true, zh: true } } },
+    select: { id: true, level: true, hskShown: true, hsk2: true, hsk3: true, lines: { select: { tokens: true, zh: true } } },
   });
   let lChanged = 0;
   const report: string[] = [];
@@ -81,6 +82,7 @@ async function main() {
     let b = 0;
     let miss = 0;
     const seen = new Set<string>();
+    const lv2: number[] = []; // cấp HSK 2.0 của từng từ tra được (để tính cấp hiển thị)
     for (const line of les.lines) {
       const toks = (line.tokens as unknown as Tok[]) ?? [];
       const items = toks.length ? toks.filter((t) => !t.x).map((t) => t.t) : [...line.zh].filter(isHan);
@@ -92,17 +94,21 @@ async function main() {
           miss++;
           continue;
         }
+        if (l.hsk2) lv2.push(l.hsk2);
         a = Math.max(a, l.hsk2 ?? 0);
         b = Math.max(b, l.hsk3 ?? 0);
       }
     }
     const hsk2 = a || null;
     const hsk3 = b || null;
-    if (hsk2 !== les.hsk2 || hsk3 !== les.hsk3) {
-      await prisma.lesson.update({ where: { id: les.id }, data: { hsk2, hsk3 } });
+    // Cấp hiển thị: giữ cấp đã soạn; chỉ nâng khi HƠN 70% từ (tra được) thuộc cấp cao hơn, khi đó lấy cấp trung vị của nhóm từ cao hơn.
+    const higher = lv2.filter((v) => v > les.level).sort((x, y) => x - y);
+    const shown = lv2.length && higher.length / lv2.length > 0.7 ? higher[Math.floor(higher.length / 2)] : les.level;
+    if (hsk2 !== les.hsk2 || hsk3 !== les.hsk3 || shown !== les.hskShown) {
+      await prisma.lesson.update({ where: { id: les.id }, data: { hsk2, hsk3, hskShown: shown } });
       lChanged++;
     }
-    report.push(`${les.id.padEnd(12)} 2.0·${hsk2 ?? '—'} | 3.0·${hsk3 ?? '—'}   (${seen.size} từ, ${miss} từ chưa tra được)`);
+    report.push(`${les.id.padEnd(12)} soạn HSK ${les.level} → hiển thị HSK ${shown}   (từ khó nhất 2.0·${hsk2 ?? '—'} | 3.0·${hsk3 ?? '—'}; ${seen.size} từ, ${higher.length}/${lv2.length} từ cao hơn, ${miss} chưa tra được)`);
   }
   console.log(`Bài học: ${lessons.length} bài, cập nhật ${lChanged}.`);
   report.forEach((r) => console.log('  ' + r));

@@ -7,6 +7,7 @@ import { configureApp } from '../src/app.setup.js';
 import { Clock } from '../src/common/time.js';
 import { loadEnv } from '../src/config/env.js';
 import type { StoredSection } from '../src/exam/exam.service.js';
+import { vnDate, WELCOME_CAMPAIGNS } from '../src/mailbox/campaigns.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 // Cần database thật đã seed (pnpm db:seed, db:seed:chapters, db:seed:exams). Tài khoản thử xóa ở cuối.
@@ -62,7 +63,19 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
     expect(JSON.stringify(ev.body)).not.toContain('衣服');
 
     const box = await request(http()).get('/api/v1/mailbox').set(u.auth).expect(200);
-    expect(box.body.items[0]).toMatchObject({ sender: 'SYSTEM', hasReward: false, read: false });
+    const sys = box.body.items.find((m: { sender: string }) => m.sender === 'SYSTEM');
+    expect(sys).toMatchObject({ hasReward: false, read: false });
+    // thư theo dịp (20/10…) từ quản trị, có tên người đăng ký trong nội dung và quà nếu dịp có quà
+    const today = vnDate(new Date());
+    const active = WELCOME_CAMPAIGNS.filter((c) => today >= c.from && today <= c.until);
+    const camp = box.body.items.filter((m: { sender: string }) => m.sender === 'ADMIN');
+    expect(camp).toHaveLength(active.length);
+    if (active.length) {
+      const full = await request(http()).get(`/api/v1/mailbox/${camp[0].id}`).set(u.auth).expect(200);
+      expect(full.body.subject).toBe(active[0].subject);
+      expect(full.body.body).toContain('Chào starter,');
+      expect(full.body.reward?.tokens ?? 0).toBe(active[0].reward?.tokens ?? 0);
+    }
     expect(box.body.counts.unread).toBeGreaterThanOrEqual(1);
     const ledger = await prisma.tokenLedger.findFirst({ where: { userId: u.id, kind: 'STARTER' } });
     expect(ledger?.delta).toBe(999);
@@ -95,6 +108,8 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       user = await signup(app, 'mailuser');
       const a = await signup(app, 'mailadmin');
       made.push(user.id, a.id);
+      // bỏ thư theo dịp (campaigns.ts) để các phép đếm bên dưới không phụ thuộc ngày chạy test
+      await prisma.mail.deleteMany({ where: { toUserId: user.id, sender: 'ADMIN' } });
       await prisma.user.update({ where: { id: a.id }, data: { role: 'ADMIN' } });
       const login = await request(http()).post('/api/v1/auth/login').send({ email: a.email, password: 'matkhau-e2e-123' }).expect(200);
       admin = { ...a, auth: { Authorization: `Bearer ${login.body.accessToken}` } };
@@ -333,6 +348,51 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(topics.body.some((t: { id: string }) => t.id === 'hsk3-hoc-tap')).toBe(true);
     });
 
+    it('ngữ pháp: danh sách có khóa theo cấp, chi tiết có ví dụ và bài luyện không lộ đáp án', async () => {
+      const u = S;
+      const list = await request(http()).get('/api/v1/grammar').set(u.auth).expect(200);
+      expect(list.body.points.length).toBeGreaterThanOrEqual(58);
+      // độ phù hợp theo cấp người học (HSK 1): đúng cấp / cấp kế / còn xa, và gợi ý chỉ lấy điểm đã mở khóa
+      const fit = new Map<string, string>(list.body.points.map((p: { slug: string; fit: string }) => [p.slug, p.fit]));
+      expect(fit.get('ma-ne')).toBe('match');
+      expect(fit.get('le')).toBe('next');
+      expect(fit.get('ruguo')).toBe('far');
+      const rec = list.body.points.filter((p: { recommended: boolean }) => p.recommended);
+      expect(rec.length).toBeGreaterThan(0);
+      expect(rec.every((p: { locked: boolean; level: number }) => !p.locked && p.level === 1)).toBe(true);
+      expect(list.body.levels.find((l: { level: number }) => l.level === 4)).toMatchObject({ locked: true });
+      expect(list.body.readyForExam).toBe(false);
+      const cats = new Set(list.body.points.map((p: { category: string }) => p.category));
+      for (const c of ['Câu điều kiện', 'Mệnh đề quan hệ', 'Câu ước muốn', 'Câu tường thuật']) expect(cats.has(c)).toBe(true);
+      const bySlug = new Map<string, { locked: boolean; level: number }>(list.body.points.map((p: { slug: string; locked: boolean; level: number }) => [p.slug, p]));
+      expect(bySlug.get('ma-ne')?.locked).toBe(false);
+      expect(bySlug.get('le')?.locked).toBe(true);
+      await request(http()).get('/api/v1/grammar/le').set(u.auth).expect(403);
+
+      const d = await request(http()).get('/api/v1/grammar/ma-ne').set(u.auth).expect(200);
+      expect(d.body.examples).toHaveLength(3);
+      expect(d.body.examples[0].pinyin).toContain('nǐ');
+      expect(d.body.practice).toHaveLength(5); // 4 bài + 1 bài tìm câu sai
+      expect(JSON.stringify(d.body.practice)).not.toContain('"answer"');
+      // làm một bài luyện của ngữ pháp bằng API chấm chung
+      const fill = d.body.practice.find((x: { type: string }) => x.type === 'FILL');
+      const row = await prisma.writingItem.findUniqueOrThrow({ where: { id: fill.id } });
+      const ok = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: fill.id, answer: (row.data as { answer: string }).answer }).expect(200);
+      expect(ok.body.correct).toBe(true);
+      const after = await request(http()).get('/api/v1/grammar').set(u.auth).expect(200);
+      expect(after.body.points.find((p: { slug: string }) => p.slug === 'ma-ne').practice).toMatchObject({ total: 5, done: 1, correct: 1 });
+    });
+
+    it('mã quà: sai mã 404, đúng mã +999 lượt, dùng lại 400', async () => {
+      const u = S;
+      await request(http()).post('/api/v1/redeem').set(u.auth).send({ code: 'SAIMA123' }).expect(404);
+      const before = (await request(http()).get('/api/v1/event').set(u.auth).expect(200)).body.tokens as number;
+      const ok = await request(http()).post('/api/v1/redeem').set(u.auth).send({ code: ' hv999 luot ' }).expect(200);
+      expect(ok.body.tokens).toBe(999);
+      expect((await request(http()).get('/api/v1/event').set(u.auth).expect(200)).body.tokens).toBe(before + 999);
+      await request(http()).post('/api/v1/redeem').set(u.auth).send({ code: 'HV999LUOT' }).expect(400);
+    });
+
     it('bài đọc hiện chữ ngay, HSK 2 bị khóa với người HSK 1, trả lời xong có bản dịch', async () => {
       const u = S;
       const list = await request(http()).get('/api/v1/lessons?level=1&kind=READING').set(u.auth).expect(200);
@@ -378,7 +438,7 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       const hi = await prisma.writingItem.findFirstOrThrow({ where: { level: 2 } });
       await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: hi.id, answer: 'x' }).expect(400);
       const st = await request(http()).get('/api/v1/writing/stats').set(u.auth).expect(200);
-      expect(st.body.done).toBe(2);
+      expect(st.body.done).toBeGreaterThanOrEqual(2);
     });
 
   it('người dùng HSK 3.0 cấp 1 được tính tương đương HSK 2.0 cấp 2', async () => {
@@ -433,7 +493,7 @@ describe.skipIf(!run)('Kho lưu trữ sau khi sự kiện kết thúc (e2e, gi�
     await request(http()).get('/api/v1/event/archive/2026-11').set(auth).expect(404);
   });
 
-  it('luyện tập: mở gợi ý bằng lượt luyện tập, đoán đúng thì lộ từ và vào sổ tay, không có điểm', async () => {
+  it('luyện tập: mở gợi ý bằng lượt luyện tập, đoán đúng thì lộ từ (không tự vào sổ tay), không có điểm', async () => {
     const slot = await prisma.keySlot.findFirstOrThrow({ where: { word: { zh: '医生' } } });
     // chưa mở gợi ý 1: đoán đúng cũng sai
     await request(http()).get('/api/v1/lessons/doctor').set(auth).expect(200);
@@ -450,7 +510,7 @@ describe.skipIf(!run)('Kho lưu trữ sau khi sự kiện kết thúc (e2e, gi�
     expect(after.body.explored).toBe(1);
     expect(JSON.stringify(after.body)).toContain('医生');
     const nb = await request(http()).get(`/api/v1/notebook?q=${encodeURIComponent('医生')}`).set(auth).expect(200);
-    expect(nb.body.total).toBe(1);
+    expect(nb.body.total).toBe(0); // không tự vào sổ tay, người học tự lưu
     // không đụng điểm sự kiện / bảng xếp hạng của tháng hiện tại
     const ev = await prisma.userEvent.findFirst({ where: { userId: id, month: '2026-11' } });
     expect(ev?.points ?? 0).toBe(0);

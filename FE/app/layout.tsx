@@ -5,6 +5,7 @@ import { UiProvider } from '@/lib/ui';
 import SwRegister from './sw-register';
 import './globals.css';
 import './theme.css';
+import './theme-v2.css';
 
 // Chữ Hán dùng phông có sẵn của máy (Noto Serif SC / PingFang / Microsoft YaHei) như bản demo:
 // phông CJK rất nặng, tải về sẽ làm app chậm trên điện thoại.

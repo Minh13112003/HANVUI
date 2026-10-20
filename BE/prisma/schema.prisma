@@ -37,6 +37,7 @@ enum WritingType {
   ORDER // sắp xếp các phần thành câu
   FILL // điền chữ vào chỗ trống
   CHOOSE // chọn câu tiếng Trung đúng nghĩa
+  WRONG // tìm câu sai ngữ pháp (options + answer = câu sai)
 }
 
 enum TokenKind {
@@ -48,6 +49,7 @@ enum TokenKind {
   ADMIN // đền bù sự cố
   STARTER // lượt tặng khi tạo tài khoản (chỉ bản demo)
   MAIL // nhận quà từ hộp thư
+  CODE // nhập mã quà (Tài khoản → Nhập mã)
 }
 
 enum MailSender {
@@ -91,6 +93,7 @@ model User {
   events        UserEvent[]
   missions      UserMission[]
   ledger        TokenLedger[]
+  redeemUses    RedeemUse[]
   items         InventoryItem[]
   levelStats    UserLevelStat[]
   examAttempts  ExamAttempt[]
@@ -142,16 +145,16 @@ model Topic {
 }
 
 model Word {
-  id      Int     @id @default(autoincrement())
-  topicId String? // chủ đề từ vựng
-  zh      String
-  pinyin  String
-  vi      String
-  pos     String? // loại từ
-  phrase  Boolean @default(false)
-  hsk2    Int? // cấp HSK 2.0 (1-6)
-  hsk3    Int? // cấp HSK 3.0 (1-9)
-  example Json? // { zh, pinyin, vi }
+  id        Int     @id @default(autoincrement())
+  topicId   String? // chủ đề từ vựng
+  zh        String
+  pinyin    String
+  vi        String
+  pos       String? // loại từ
+  phrase    Boolean @default(false)
+  hsk2      Int? // cấp HSK 2.0 (1-6)
+  hsk3      Int? // cấp HSK 3.0 (1-9)
+  example   Json? // { zh, pinyin, vi }
   audioKey  String? // khóa file âm thanh của riêng từ trên R2 (audio/words/...)
   audioHash String? // băm chữ + giọng + nhà cung cấp; đổi thì sinh lại
 
@@ -174,6 +177,7 @@ model Lesson {
   twinId    String? // bài cùng chủ đề ở cấp kia
   hsk2      Int? // nhãn cấp HSK 2.0, tính tự động từ các từ trong bài
   hsk3      Int? // nhãn cấp HSK 3.0
+  hskShown  Int? // cấp HSK 2.0 hiển thị: bằng `level`, chỉ cao hơn khi hơn 70% từ của bài thuộc cấp cao hơn (db:hsk)
   coverId   String? // khóa gốc ảnh bối cảnh trên R2
   published Boolean    @default(false)
   createdAt DateTime   @default(now())
@@ -193,6 +197,7 @@ model Lesson {
 model LessonTopic {
   lessonId String
   topicId  String
+  sort     Int    @default(0) // 0 = chủ đề chính của bài (dùng cho biểu tượng), lớn hơn = chủ đề phụ
 
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   topic  Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
@@ -549,16 +554,19 @@ model ExamAttempt {
 
 /// Bài tập viết tự chấm (kỹ năng Viết). `data` giữ đáp án nên không bao giờ gửi nguyên cho người học.
 model WritingItem {
-  id    Int         @id @default(autoincrement())
-  level Int // cấp HSK 2.0 của bài tập
-  type  WritingType
-  vi    String // bản dịch tiếng Việt để người học hiểu đề
-  data  Json // ORDER: { parts } · FILL: { parts, options, answer } · CHOOSE: { options, answer }
-  sort  Int         @default(0)
+  id        Int         @id @default(autoincrement())
+  level     Int // cấp HSK 2.0 của bài tập
+  type      WritingType
+  vi        String // bản dịch tiếng Việt để người học hiểu đề
+  data      Json // ORDER: { parts } · FILL: { parts, options, answer } · CHOOSE: { options, answer }
+  sort      Int         @default(0)
+  grammarId Int? // bài luyện thuộc một điểm ngữ pháp (null = bài tập viết chung)
 
-  done WritingDone[]
+  grammar GrammarPoint? @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  done    WritingDone[]
 
   @@index([level, type])
+  @@index([grammarId])
 }
 
 /// Kết quả gần nhất của người học với một bài tập viết.
@@ -574,4 +582,49 @@ model WritingDone {
   item WritingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
+}
+
+/// Điểm ngữ pháp (kỹ năng Viết → Ngữ pháp). Bài luyện nằm ở WritingItem.grammarId.
+model GrammarPoint {
+  id       Int    @id @default(autoincrement())
+  slug     String @unique
+  level    Int // cấp HSK 2.0; chưa tới cấp này thì khóa
+  category String // ví dụ "Câu điều kiện", "Mệnh đề quan hệ"
+  title    String
+  pattern  String // công thức
+  explain  String
+  compare  String // so sánh với tiếng Việt/tiếng Anh
+  mistake  String // lỗi hay gặp
+  examples Json // [{ zh, pinyin, vi }]
+  sort     Int    @default(0)
+
+  practice WritingItem[]
+
+  @@index([level, sort])
+}
+
+// Mã quà nhập ở Tài khoản. Mỗi người dùng một mã một lần; `maxUses` giới hạn tổng lượt dùng (null = không giới hạn).
+model RedeemCode {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique // viết HOA, không khoảng trắng
+  tokens    Int       @default(0) // lượt gợi ý sự kiện tặng thêm
+  label     String?
+  maxUses   Int?
+  used      Int       @default(0)
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  uses RedeemUse[]
+}
+
+model RedeemUse {
+  userId String   @db.Uuid
+  codeId Int
+  usedAt DateTime @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code RedeemCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, codeId])
 }

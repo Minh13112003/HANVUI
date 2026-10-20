@@ -6,7 +6,7 @@
   --bg:#EEF2F0; --surface:#FFFFFF; --surface2:#E4EBE8; --fg:#15211F; --muted:#586966; --line:#D2DCD9;
   --accent:#0E7466; --accent-fg:#FFFFFF; --seal:#C0392B; --good:#1E7F4F; --bad:#B3261E; --goodbg:#DDF1E7; --badbg:#F8E1DE; --c1:#2F6FDB; --c1bg:#DDE8FA; --c2:#9A7400; --c2bg:#FAEFC2; --c3:#C25A0A; --c3bg:#FCE3CF; --hero:#103C36; --hero2:#1B5A50; --herofg:#E8F4F0; --herodim:#A5CBC1; --tone1:#D1493F; --tone2:#B86A00; --tone3:#2E8B57; --tone4:#2F6FDB;
   --font-ui:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --font-han:'Noto Serif SC','Songti SC','SimSun',serif;
+  --font-han:'Noto Serif SC','Songti SC','PingFang SC','Microsoft YaHei','Noto Sans SC',serif;
   --font-hansans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){

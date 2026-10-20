@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { equivHsk2 } from '../common/hsk.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-type WType = 'ORDER' | 'FILL' | 'CHOOSE';
+type WType = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
 type Data = { parts?: string[]; alt?: string[]; options?: string[]; answer?: string };
 
 const shuffle = <T>(a: T[]): T[] => {
@@ -81,11 +81,26 @@ export class WritingService {
       total,
       done: rows.length,
       correct: rows.filter((r) => r.correct).length,
-      byType: (['ORDER', 'FILL', 'CHOOSE'] as WType[]).map((t) => ({
+      byType: (['ORDER', 'FILL', 'CHOOSE', 'WRONG'] as WType[]).map((t) => ({
         type: t,
         done: rows.filter((r) => r.item.type === t).length,
         correct: rows.filter((r) => r.item.type === t && r.correct).length,
       })),
     };
+  }
+  /** Bài luyện của một điểm ngữ pháp, ở dạng gửi cho người học (không có đáp án) kèm kết quả lần gần nhất. */
+  async forGrammar(userId: string, grammarId: number) {
+    const rows = await this.prisma.writingItem.findMany({
+      where: { grammarId },
+      orderBy: { sort: 'asc' },
+      include: { done: { where: { userId } } },
+    });
+    return rows.map((r) => {
+      const d = r.data as Data;
+      const base = { id: r.id, level: r.level, type: r.type, vi: r.vi, done: r.done[0] ? { correct: r.done[0].correct } : null };
+      if (r.type === 'ORDER') return { ...base, tiles: shuffle(d.parts ?? []) };
+      if (r.type === 'FILL') return { ...base, parts: d.parts, options: shuffle(d.options ?? []) };
+      return { ...base, options: shuffle(d.options ?? []) };
+    });
   }
 }

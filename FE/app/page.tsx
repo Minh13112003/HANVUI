@@ -8,7 +8,7 @@ import Shell from '@/components/Shell';
 import Tips from '@/components/Tips';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { greeting, minutes } from '@/lib/text';
+import { greeting, levelName, minutes, standardName } from '@/lib/text';
 import type { EventState, LessonCard, Notebook } from '@/lib/types';
 
 interface Today {
@@ -65,7 +65,7 @@ export default function HomePage() {
               {user?.displayName}
             </div>
             <span className="hsub">
-              {user?.hskStandard === 'HSK3' ? 'HSK 3.0' : 'HSK 2.0'} · cấp {user?.hskLevel} · đã học {doneLessons}/
+              {user ? standardName(user.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2') + ' · ' + levelName(user.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', user.hskLevel) : ''} · đã học {doneLessons}/
               {lessons?.length ?? 0} bài
             </span>
           </div>
@@ -148,7 +148,7 @@ export default function HomePage() {
         <section className="skills">
           {SKILLS.map((s) => (
             <Link key={s.href} href={s.href} className={'skill ' + s.cls}>
-              <span className="sg2 han" aria-hidden="true">
+              <span className="stile han" aria-hidden="true">
                 {s.zh}
               </span>
               <b>{s.name}</b>

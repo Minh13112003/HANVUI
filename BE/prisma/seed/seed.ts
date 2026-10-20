@@ -1,5 +1,6 @@
 // Nạp nội dung mẫu lấy từ bản demo (bản thật: AI sinh, người duyệt). Chỉ chạy ở môi trường dev.
 // Chạy: pnpm db:seed   (xóa và nạp lại phần NỘI DUNG, không đụng tài khoản)
+import { applyHintFixes } from './hint-fixes.js';
 import '../../src/config/dotenv.js';
 import { readFileSync } from 'node:fs';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -147,7 +148,7 @@ async function main() {
       data: {
         id: l.id, kind: 'DIALOG', title: l.title, situation: l.situation,
         tags: meta.tags ?? [], level: l.level, published: true,
-        topics: { create: (meta.topics ?? []).map((n: string) => ({ topicId: slug(n) })) },
+        topics: { create: (meta.topics ?? []).map((n: string, i: number) => ({ topicId: slug(n), sort: i })) },
         roles: {
           create: Object.entries(l.cast).map(([who, c]: [string, any]) => ({
             who, label: l.who[who] ?? who, gender: c.g, pitchRange: c.r, voiceId: VOICE[`${c.g}${c.r}`],
@@ -222,6 +223,7 @@ async function main() {
 
   // Chương 2-4 (soạn riêng ở chapters.ts)
   console.log('Chương 2-4:', await seedChapters(prisma, MONTH, demo.SUPP));
+  console.log('Sửa gợi ý:', await applyHintFixes(prisma));
 
   const n = await Promise.all([
     prisma.topic.count(), prisma.word.count(), prisma.lesson.count(), prisma.lessonLine.count(),

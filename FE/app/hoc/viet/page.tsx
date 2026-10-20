@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
 import SkillNav from '@/components/SkillNav';
+import GrammarSection from '@/components/GrammarSection';
 import Stroke from '@/components/Stroke';
+import { WriteHelpButton } from '@/components/WriteHelp';
 import WritePractice from '@/components/WritePractice';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { Notebook, Topic, Word } from '@/lib/types';
 
-type Mode = 'stroke' | 'order' | 'fill' | 'choose';
+type Mode = 'stroke' | 'grammar' | 'order' | 'fill' | 'choose';
 
 export default function WritePage() {
   const { user } = useAuth();
@@ -46,18 +48,24 @@ export default function WritePage() {
         <SkillNav />
         <div className="row between">
           <h1>Viết</h1>
-          <span className="tag">tự chấm</span>
+          <span className="row" style={{ gap: 8 }}>
+            <span className="tag">tự chấm</span>
+            <WriteHelpButton />
+          </span>
         </div>
 
         <div className="seg">
           <button className={mode === 'stroke' ? 'on' : ''} onClick={() => setMode('stroke')}>
-            Tập viết nét
+            Nét
+          </button>
+          <button className={mode === 'grammar' ? 'on' : ''} onClick={() => setMode('grammar')}>
+            Ngữ pháp
           </button>
           <button className={mode === 'order' ? 'on' : ''} onClick={() => setMode('order')}>
-            Sắp xếp câu
+            Sắp xếp
           </button>
           <button className={mode === 'fill' ? 'on' : ''} onClick={() => setMode('fill')}>
-            Điền chữ
+            Điền
           </button>
           <button className={mode === 'choose' ? 'on' : ''} onClick={() => setMode('choose')}>
             Chọn câu
@@ -83,6 +91,7 @@ export default function WritePage() {
           </>
         ) : null}
 
+        {mode === 'grammar' ? <GrammarSection /> : null}
         {mode === 'order' ? <WritePractice kind="ORDER" /> : null}
         {mode === 'fill' ? <WritePractice kind="FILL" /> : null}
         {mode === 'choose' ? <WritePractice kind="CHOOSE" /> : null}

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Inj
 import { hasHan, isChineseAnswer, pinyinKey } from '../common/text.js';
 import { Clock, vnDay } from '../common/time.js';
 import { demo } from '../config/demo.js';
+import { hintLessonOf, pickHintLesson, slotLessons } from './hint-lesson.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   cellsOpen,
@@ -89,6 +90,7 @@ export class EventService {
       (await this.prisma.userSlot.findMany({ where: { userId, slot: { chapter: { storyId: story.id } } } })).map((u) => [u.slotId, u]),
     );
     const group = groupOf(user.hskLevel);
+    const lessonsBySlot = await slotLessons(this.prisma, story.id);
     const curChapter = chapterOfDay(day.day);
 
     const chapters = story.chapters
@@ -113,6 +115,8 @@ export class EventService {
             hint1: hints >= 1 ? s.hint1 : null,
             hint2: hints >= 2 ? (s.hint2 as unknown as ByGroup)[g(2)] ?? null : null,
             hint3: hints >= 3 ? (s.hint3 as unknown as ByGroup)[g(3)] ?? null : null,
+            // Gợi ý 2 chỉ thẳng một bài chứa từ khóa (tên bài đã che nếu trùng từ khóa).
+            hint2Lesson: hints >= 2 ? pickHintLesson(s.word, lessonsBySlot.get(s.id) ?? [], Number(g(2))) : null,
             clueTopicId: hints >= 1 ? s.clueTopicId : null,
             points: solved ? u!.points : null,
             // Chỉ ô đã giải mới lộ từ khóa.
@@ -175,7 +179,7 @@ export class EventService {
     if (!slot || slot.chapter.story.month !== day.monthKey) throw new NotFoundException('Không có ô này');
     this.assertUnlocked(userId, day.monthKey, slot, day.day);
 
-    return this.prisma.$transaction(async (tx) => {
+    const r = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "UserEvent" WHERE "userId"=${userId}::uuid AND "month"=${day.monthKey} FOR UPDATE`;
       const u = await tx.userSlot.findUnique({ where: { userId_slotId: { userId, slotId } } });
       if (u?.foundAt) throw new BadRequestException('Ô này đã giải');
@@ -195,8 +199,11 @@ export class EventService {
       await tx.tokenLedger.create({ data: { userId, month: day.monthKey, delta: -HINT_COST, kind: 'HINT', reason: `Ô ${slotId}, gợi ý ${opened + 1}` } });
       const n = opened + 1;
       const hint = n === 1 ? slot.hint1 : (((n === 2 ? slot.hint2 : slot.hint3) as unknown as ByGroup)[String(group)] ?? null);
-      return { hintNo: n, hint, clueTopicId: n === 1 ? slot.clueTopicId : undefined };
+      const left = await tx.userEvent.findUniqueOrThrow({ where: { userId_month: { userId, month: day.monthKey } }, select: { tokens: true } });
+      return { hintNo: n, hint, clueTopicId: n === 1 ? slot.clueTopicId : undefined, tokens: left.tokens, group };
     });
+    const { group: g, ...out } = r;
+    return { ...out, hint2Lesson: out.hintNo === 2 ? await hintLessonOf(this.prisma, slotId, g) : null };
   }
 
   /** Ô vị trí `pos` của người này đã mở theo lịch chưa. Ném lỗi nếu chưa. */
@@ -287,12 +294,7 @@ export class EventService {
         where: { userId_month: { userId, month: day.monthKey } },
         data: { solved, points: { increment: pts }, medal, penalty: 0, lastSolvedAt: now },
       });
-      // Từ khóa đã giải tự vào sổ tay.
-      await tx.userWord.upsert({
-        where: { userId_zh: { userId, zh: slot.word.zh } },
-        create: { userId, wordId: slot.word.id, zh: slot.word.zh, pinyin: slot.word.pinyin, vi: slot.word.vi, pos: slot.word.pos, isPhrase: slot.word.phrase, sourceLessonId: lessonId, savedDay: day.key },
-        update: {},
-      });
+      // Từ khóa đã giải KHÔNG tự vào sổ tay: người học tự bấm "Lưu vào Sổ tay" (POST notebook).
       let vipItem = false;
       if (medal === 4 && ev.medal < 4) {
         await tx.inventoryItem.upsert({

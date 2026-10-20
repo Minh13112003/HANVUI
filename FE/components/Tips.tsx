@@ -1,6 +1,6 @@
 'use client';
 // Chỉ dẫn trên màn hình (rule.md mục 6): lần đầu mở mỗi màn, làm tối màn hình và chỉ lần lượt từng phần.
-// Tắt/bật và xem lại ở Thêm → Hướng dẫn.
+// Tắt/bật và xem lại ở Tài khoản → Hướng dẫn.
 import { useEffect, useState } from 'react';
 
 export interface Tip {

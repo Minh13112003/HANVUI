@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { hasHan, isChineseAnswer, pinyinKey } from '../common/text.js';
 import { Clock, vnDay } from '../common/time.js';
+import { hintLessonOf, pickHintLesson, slotLessons } from './hint-lesson.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ByGroup } from './event.service.js';
 import { orderSlots } from './slot-order.js';
@@ -51,6 +52,7 @@ export class ArchiveService {
       (await this.prisma.userSlot.findMany({ where: { userId, slot: { chapter: { storyId: story.id } } } })).map((u) => [u.slotId, u]),
     );
     const group = groupOf(user.hskLevel);
+    const lessonsBySlot = await slotLessons(this.prisma, story.id);
     let explored = 0;
     let total = 0;
     const chapters = story.chapters.map((c) => {
@@ -70,6 +72,7 @@ export class ArchiveService {
           hint1: hints >= 1 ? s.hint1 : null,
           hint2: hints >= 2 ? ((s.hint2 as unknown as ByGroup)[g(2)] ?? null) : null,
           hint3: hints >= 3 ? ((s.hint3 as unknown as ByGroup)[g(3)] ?? null) : null,
+          hint2Lesson: hints >= 2 ? pickHintLesson(s.word, lessonsBySlot.get(s.id) ?? [], Number(g(2))) : null,
           clueTopicId: hints >= 1 ? s.clueTopicId : null,
           word: solved ? { zh: s.word.zh, pinyin: s.word.pinyin, vi: s.word.vi } : null,
         };
@@ -98,7 +101,7 @@ export class ArchiveService {
     if (!slot || slot.chapter.story.month >= this.currentMonth()) throw new NotFoundException('Ô này chưa vào kho lưu trữ');
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true } });
 
-    return this.prisma.$transaction(async (tx) => {
+    const r = await this.prisma.$transaction(async (tx) => {
       const u = await tx.userSlot.findUnique({ where: { userId_slotId: { userId, slotId } } });
       if (u?.foundAt) throw new BadRequestException('Ô này đã giải');
       const opened = u?.hintsOpened ?? 0;
@@ -113,8 +116,10 @@ export class ArchiveService {
       });
       const n = opened + 1;
       const hint = n === 1 ? slot.hint1 : ((n === 2 ? slot.hint2 : slot.hint3) as unknown as ByGroup)[String(group)] ?? null;
-      return { hintNo: n, hint, clueTopicId: n === 1 ? slot.clueTopicId : undefined };
+      return { hintNo: n, hint, clueTopicId: n === 1 ? slot.clueTopicId : undefined, group };
     });
+    const { group: g, ...out } = r;
+    return { ...out, hint2Lesson: out.hintNo === 2 ? await hintLessonOf(this.prisma, slotId, g) : null };
   }
 
   /**
@@ -140,14 +145,8 @@ export class ArchiveService {
       return { correct: false, message: inLesson ? 'Từ này có trong hội thoại nhưng không phải từ khóa' : 'Chưa đúng' };
     }
     const w = hit.slot.word;
-    await this.prisma.$transaction([
-      this.prisma.userSlot.update({ where: { userId_slotId: { userId, slotId: hit.slotId } }, data: { foundAt: this.clock.now(), points: 0, early: false } }),
-      this.prisma.userWord.upsert({
-        where: { userId_zh: { userId, zh: w.zh } },
-        create: { userId, wordId: w.id, zh: w.zh, pinyin: w.pinyin, vi: w.vi, pos: w.pos, isPhrase: w.phrase, sourceLessonId: lessonId, savedDay: vnDay(this.clock.now()).key },
-        update: {},
-      }),
-    ]);
+    // Không tự lưu vào sổ tay: người học tự bấm "Lưu vào Sổ tay".
+    await this.prisma.userSlot.update({ where: { userId_slotId: { userId, slotId: hit.slotId } }, data: { foundAt: this.clock.now(), points: 0, early: false } });
     return { correct: true, word: { zh: w.zh, pinyin: w.pinyin, vi: w.vi }, points: 0 };
   }
 

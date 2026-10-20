@@ -8,7 +8,8 @@ import Tips from '@/components/Tips';
 import SkillNav from '@/components/SkillNav';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { hskLabel } from '@/lib/text';
+import { clueColor, hasClueColor } from '@/lib/clue';
+import { lessonLabel, levelName } from '@/lib/text';
 import type { EventState, LessonCard, Topic } from '@/lib/types';
 
 const LEVELS = [
@@ -57,6 +58,13 @@ export default function ListenListPage() {
   const clues = (ev?.chapters ?? []).flatMap((c) =>
     c.cells.filter((x) => x.status === 'open' && (x.hintsOpened ?? 0) >= 1 && x.hint1),
   );
+  // Ô đã mở từ 2 gợi ý: gợi ý 2 chỉ tới một bài, bài đó mang màu của ô (kèm số "Ô n").
+  const clueByLesson = new Map<string, { pos: number; color: string }[]>();
+  for (const c of clues) {
+    if (!hasClueColor(c.hintsOpened) || !c.hint2Lesson) continue;
+    const id = c.hint2Lesson.id;
+    clueByLesson.set(id, [...(clueByLesson.get(id) ?? []), { pos: c.pos, color: clueColor(c.pos) }]);
+  }
 
   return (
     <Shell title="Nghe">
@@ -121,19 +129,29 @@ export default function ListenListPage() {
               <span className="pill">{clues.length} ô</span>
             </div>
             {clues.map((c) => (
-              <button
+              <div
                 key={c.slotId}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && c.clueTopicId && setTopic(c.clueTopicId)}
                 className="clueRow"
                 onClick={() => c.clueTopicId && setTopic(c.clueTopicId)}
                 title="Lọc theo chủ đề của gợi ý"
               >
-                <span className="cl1">Ô {c.pos + 1}</span>
+                <span className="cl1" style={hasClueColor(c.hintsOpened) ? { background: clueColor(c.pos), color: '#fff', borderRadius: 8, padding: '2px 8px', fontWeight: 800 } : undefined}>
+                  Ô {c.pos + 1}
+                </span>
                 <span className="grow">
                   {c.hint1?.vi}
                   {c.hint2 ? ' · ' + c.hint2.vi : ''}
+                  {c.hint2Lesson ? (
+                    <Link href={'/hoc/nghe/' + c.hint2Lesson.id} onClick={(e) => e.stopPropagation()} style={{ display: 'block', fontWeight: 700, marginTop: 4 }}>
+                      📖 Bài: {c.hint2Lesson.title} ›
+                    </Link>
+                  ) : null}
                 </span>
                 <span className="chev">›</span>
-              </button>
+              </div>
             ))}
           </div>
         ) : null}
@@ -141,7 +159,7 @@ export default function ListenListPage() {
         {rows === null ? <p className="muted">Đang tải…</p> : null}
         {rows?.some((l) => l.locked) ? (
           <div className="alert" role="note">
-            🔒 Bài có khóa thuộc cấp cao hơn cấp hiện tại của bạn (HSK {user?.hskLevel ?? 1}). Làm đề nâng cấp ở mục Học
+            🔒 Bài có khóa thuộc cấp cao hơn cấp hiện tại của bạn ({levelName(user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', user?.hskLevel ?? 1)}). Làm đề nâng cấp ở Tài khoản
             → Thi, đạt điểm thì cấp tăng và bài được mở khóa.
           </div>
         ) : null}
@@ -180,13 +198,23 @@ export default function ListenListPage() {
             className="lcard"
             data-lv={l.level}
             data-done={l.status === 'done' ? '1' : undefined}
+            style={clueByLesson.has(l.id) ? { boxShadow: `inset 0 0 0 3px ${clueByLesson.get(l.id)![0].color}, var(--lift)` } : undefined}
           >
-            <span className="lg2 han">{l.topics[0]?.name?.[0] ?? '听'}</span>
+            <span className="lg2 han">{l.topics[0]?.glyph ?? '听'}</span>
             <span className="grow">
               <b>{l.title}</b>
               <small className="lsub muted">
                 {l.situation} · {l.lines} câu
               </small>
+              {clueByLesson.get(l.id)?.length ? (
+                <span className="tags">
+                  {clueByLesson.get(l.id)!.map((k) => (
+                    <em key={k.pos} style={{ background: k.color, borderColor: k.color, color: '#fff', fontWeight: 800 }}>
+                      Gợi ý của Ô {k.pos + 1}
+                    </em>
+                  ))}
+                </span>
+              ) : null}
               <span className="tags">
                 {l.topics.map((t) => (
                   <em key={t.id} className="tp">
@@ -199,7 +227,7 @@ export default function ListenListPage() {
               </span>
             </span>
             <span className="lr">
-              <span className="pill">{hskLabel(l.hsk2, l.hsk3)}</span>
+              <span className="pill">{lessonLabel(l.levelShown ?? l.level)}</span>
               <small className={l.status === 'done' ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
                 {l.status === 'done' ? '✓ đã học' : l.status === 'started' ? 'đang học' : 'mới'}
               </small>

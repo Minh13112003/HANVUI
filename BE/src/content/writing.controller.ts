@@ -5,7 +5,7 @@ import { CurrentUser, type AuthUser } from '../auth/auth.decorators.js';
 import { WritingService } from './writing.service.js';
 
 class PickQuery {
-  @IsIn(['ORDER', 'FILL', 'CHOOSE']) type!: 'ORDER' | 'FILL' | 'CHOOSE';
+  @IsIn(['ORDER', 'FILL', 'CHOOSE', 'WRONG']) type!: 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(20) count?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(6) level?: number;
 }

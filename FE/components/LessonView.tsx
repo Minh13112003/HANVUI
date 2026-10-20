@@ -7,7 +7,7 @@ import { Confetti } from '@/components/Bits';
 import { api } from '@/lib/api';
 import { AUDIO_BASE, play, playAll, stopAll } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
-import { hskLabel } from '@/lib/text';
+import { lessonLabel } from '@/lib/text';
 import { useUi } from '@/lib/ui';
 import type { AnswerResult, Lesson, Token } from '@/lib/types';
 import GuessSheet from './GuessSheet';
@@ -192,7 +192,7 @@ export default function LessonView({ id }: { id: string }) {
           </p>
         </div>
         <div className="lr">
-          <span className="pill">{hskLabel(lesson.hsk2, lesson.hsk3)}</span>
+          <span className="pill">{lessonLabel(lesson.levelShown ?? lesson.level)}</span>
           {lesson.twinId ? (
             <Link className="twin" href={'/hoc/nghe/' + lesson.twinId}>
               Bản HSK {twinLevel} →
@@ -249,12 +249,6 @@ export default function LessonView({ id }: { id: string }) {
           </div>
           <Switch on={slow} set={setSlow} label="Chậm" />
         </div>
-        {!canSpeak ? (
-          <p className="muted" style={{ fontSize: 12 }}>
-            File âm thanh sẽ nằm trên Cloudflare R2 (chưa tạo). Trả lời câu hỏi hoặc bấm "Bỏ qua, xem lời thoại" rồi
-            nghe bằng giọng trình duyệt ở phần lời thoại.
-          </p>
-        ) : null}
       </div>
 
       {lesson.questions.length ? (

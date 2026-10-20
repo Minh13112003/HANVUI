@@ -57,6 +57,7 @@ export class AuthService {
 
 Bản demo tặng bạn ${n} lượt gợi ý để thử mọi tính năng.` : ''),
       );
+      await this.mail.sendWelcomeCampaigns(userId, displayName);
     } catch (e) {
       this.log.error(`Không hoàn tất bước chào tài khoản mới ${userId}: ${(e as Error).message}`);
     }

@@ -84,7 +84,17 @@ describe.skipIf(!process.env.DATABASE_URL)('Nội dung và sự kiện (e2e)', (
     const tokensBefore = (await get('/event').expect(200)).body.tokens;
     const hint = await post(`/event/slots/${slot.id}/hint`).expect(200);
     expect(hint.body.hintNo).toBe(1);
+    expect(hint.body.tokens).toBe(tokensBefore - 1); // trả số lượt còn lại để FE cập nhật ngay
     expect((await get('/event').expect(200)).body.tokens).toBe(tokensBefore - 1);
+    // gợi ý 2 chỉ thẳng một bài chứa từ khóa, tên bài không lộ đáp án (dùng ô khác để không đổi điểm của ô 咖啡)
+    const other = await prisma.keySlot.findFirstOrThrow({ where: { word: { zh: '文件' } } });
+    await post(`/event/slots/${other.id}/hint`).expect(200);
+    const h2 = await post(`/event/slots/${other.id}/hint`).expect(200);
+    expect(h2.body.hintNo).toBe(2);
+    expect(h2.body.hint2Lesson?.id).toBeTruthy();
+    expect(h2.body.hint2Lesson.title.toLowerCase()).not.toContain('tài liệu');
+    const cell = (await get('/event').expect(200)).body.chapters.flatMap((c: { cells: { slotId: number }[] }) => c.cells).find((c: { slotId: number }) => c.slotId === other.id);
+    expect(cell.hint2Lesson.id).toBe(h2.body.hint2Lesson.id);
 
     await post('/event/guess', { lessonId: 'office', answer: 'cà phê' }).expect(400); // tiếng Việt: lỗi, không tốn lượt
     await post('/event/guess', { lessonId: 'hotel', answer: '咖啡' }).expect(400); // chưa mở bài này
@@ -105,7 +115,10 @@ describe.skipIf(!process.env.DATABASE_URL)('Nội dung và sự kiện (e2e)', (
     expect(again.body.message).toBeTruthy();
   });
 
-  it('từ khóa đã giải tự vào sổ tay; lưu từ mới và xem theo ngày/chủ đề', async () => {
+  it('từ khóa đã giải KHÔNG tự vào sổ tay (người học tự lưu); lưu từ mới và xem theo ngày/chủ đề', async () => {
+    const before = await get(`/notebook?q=${encodeURIComponent('咖啡')}`).expect(200);
+    expect(before.body.total).toBe(0);
+    await post('/notebook', { zh: '咖啡', lessonId: 'office' }).expect(201);
     const nb = await get('/notebook?view=day').expect(200);
     expect(nb.body.total).toBeGreaterThanOrEqual(1);
     await post('/notebook', { zh: '你好吗', lessonId: 'cafe' }).expect(201);

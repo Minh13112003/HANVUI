@@ -267,7 +267,7 @@ export async function seedChapters(prisma: PrismaClient, month: string, supp: [s
       data: {
         id: d.id, kind: 'DIALOG', title: d.lv.title, situation: d.lv.situation, tags: d.base.tags, level: d.level,
         twinId: null, published: true,
-        topics: { create: d.base.topics.map((n) => ({ topicId: slug(n) })) },
+        topics: { create: d.base.topics.map((n, i) => ({ topicId: slug(n), sort: i })) },
         roles: {
           create: Object.entries(d.lv.cast).map(([who, c]) => ({
             who, label: d.lv.who[who] ?? who, gender: c.g, pitchRange: c.r, voiceId: VOICE[`${c.g}${c.r}`],

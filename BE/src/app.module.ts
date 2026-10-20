@@ -8,6 +8,7 @@ import { ContentModule } from './content/content.module.js';
 import { ExamModule } from './exam/exam.module.js';
 import { EventModule } from './event/event.module.js';
 import { MailModule } from './mailbox/mail.module.js';
+import { RedeemModule } from './redeem/redeem.module.js';
 import { MediaModule } from './media/media.module.js';
 import { NotebookModule } from './notebook/notebook.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     NotebookModule,
     MediaModule,
     MailModule,
+    RedeemModule,
     ExamModule,
   ],
   controllers: [AppController],
