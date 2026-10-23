@@ -15,7 +15,8 @@ BE phải chạy sẵn (mặc định `http://localhost:3001/api/v1`, xem `../BE
 
 | Biến môi trường | Ý nghĩa |
 |---|---|
-| `NEXT_PUBLIC_API_BASE` | Địa chỉ API của BE. |
+| `NEXT_PUBLIC_API_BASE` | Đường gọi API, mặc định `/api/v1` (cùng nguồn). |
+| `BE_ORIGIN` | Next chuyển tiếp `/api/v1` sang đây, mặc định `http://localhost:3001`. |
 | `NEXT_PUBLIC_AUDIO_BASE` | Tên miền CDN của Cloudflare R2 chứa file âm thanh. **Để trống** thì app đọc bằng giọng trình duyệt (`SpeechSynthesis`) theo giới tính và cao độ của vai. |
 
 ## Các màn
@@ -42,3 +43,15 @@ BE phải chạy sẵn (mặc định `http://localhost:3001/api/v1`, xem `../BE
 - Dữ liệu nét chữ do `hanzi-writer` tải từ CDN jsdelivr theo từng chữ.
 - Service worker (`public/sw.js`) **không** lưu kết quả API; chỉ giữ vỏ app, âm thanh và dữ liệu nét.
 - Biểu tượng PWA hiện là `public/icon.svg`. Trước khi phát hành nên thay bằng PNG 192/512 cho iOS.
+
+## Mở qua Cloudflare Tunnel (thử trên điện thoại)
+
+Chạy BE và FE như bình thường, rồi ở cửa sổ khác:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+cloudflared in ra một địa chỉ `https://<ngẫu-nhiên>.trycloudflare.com` — mở trên điện thoại là dùng được. Chỉ cần một tunnel vì
+FE tự chuyển tiếp `/api/v1` sang BE. Địa chỉ đổi mỗi lần chạy; muốn địa chỉ cố định thì cần tên miền trên Cloudflare và một
+named tunnel. Ai có địa chỉ đều mở được app: tắt tunnel (Ctrl+C) khi thử xong.

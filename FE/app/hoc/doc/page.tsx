@@ -2,7 +2,7 @@
 // Kỹ năng Đọc (rule.md mục 3.5): bài đọc theo cấp HSK. Chữ hiện ngay (khác hội thoại), chạm từng từ để xem nghĩa
 // và lưu, có câu hỏi hiểu bài tự chấm. Bài cấp cao hơn cấp người học bị khóa.
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
 import SkillNav from '@/components/SkillNav';
 import SuggestWords from '@/components/SuggestWords';
@@ -37,6 +37,9 @@ export default function ReadPage() {
     setLesson(null);
     setResult(null);
     setOpen(id);
+    requestAnimationFrame(() =>
+      document.getElementById('read-' + id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
+    );
     try {
       const l = await api<Lesson>('/lessons/' + id);
       setLesson(l);
@@ -57,58 +60,20 @@ export default function ReadPage() {
     }
   };
 
+  const toggle = (id: string) => {
+    if (open === id) {
+      setOpen('');
+      setLesson(null);
+      setResult(null);
+      return;
+    }
+    load(id);
+  };
+
   const full = lesson?.lines.map((l) => l.zh ?? '').join('') ?? '';
   const answered = !!result || !!lesson?.progress.allDone;
 
-  return (
-    <Shell title="Đọc">
-      <div className="stack">
-        <SkillNav />
-        <h1>Bài đọc</h1>
-
-        {!cards ? <p className="muted">Đang tải…</p> : null}
-        <div className="stack">
-          {cards?.map((c) =>
-            c.locked ? (
-              <div key={c.id} className="lcard" style={{ opacity: 0.6 }} aria-disabled="true">
-                <span className="lg2 han">🔒</span>
-                <span className="grow">
-                  <b>{c.title}</b>
-                  <small className="lsub muted">Khóa · mở khi lên HSK {c.unlockLevel}</small>
-                </span>
-                <span className="pill">HSK {c.unlockLevel}</span>
-              </div>
-            ) : (
-              <button
-                key={c.id}
-                className="lcard"
-                data-lv={c.level}
-                data-done={c.status === 'done' ? '1' : undefined}
-                style={{ textAlign: 'left', width: '100%' }}
-                onClick={() => load(c.id)}
-                aria-pressed={open === c.id}
-              >
-                <span className="lg2 han">读</span>
-                <span className="grow">
-                  <b>{c.title}</b>
-                  <small className="lsub muted">
-                    {c.situation} · {c.lines} câu
-                  </small>
-                </span>
-                <span className="lr">
-                  <span className="pill">HSK {c.level}</span>
-                  <small className={c.status === 'done' ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
-                    {c.status === 'done' ? '✓ đã đọc' : 'mới'}
-                  </small>
-                </span>
-              </button>
-            ),
-          )}
-        </div>
-
-        {err ? <div className="alert">{err}</div> : null}
-
-        {lesson ? (
+  const reader = lesson ? (
           <>
             <div className="card reader stack">
               <div className="row between">
@@ -196,7 +161,64 @@ export default function ReadPage() {
 
             <SuggestWords lessonId={lesson.id} />
           </>
-        ) : null}
+  ) : null;
+
+  return (
+    <Shell title="Đọc">
+      <div className="stack">
+        <SkillNav />
+        <h1>Bài đọc</h1>
+
+        {!cards ? <p className="muted">Đang tải…</p> : null}
+        <div className="stack">
+          {cards?.map((c) =>
+            c.locked ? (
+              <div key={c.id} className="lcard" style={{ opacity: 0.6 }} aria-disabled="true">
+                <span className="lg2 han">🔒</span>
+                <span className="grow">
+                  <b>{c.title}</b>
+                  <small className="lsub muted">Khóa · mở khi lên HSK {c.unlockLevel}</small>
+                </span>
+                <span className="pill">HSK {c.unlockLevel}</span>
+              </div>
+            ) : (
+              <Fragment key={c.id}>
+              <button
+                id={'read-' + c.id}
+                className="lcard"
+                data-lv={c.level}
+                data-done={c.status === 'done' ? '1' : undefined}
+                onClick={() => toggle(c.id)}
+                aria-expanded={open === c.id}
+                style={{ textAlign: 'left', width: '100%', scrollMarginTop: 72 }}
+              >
+                <span className="lg2 han">读</span>
+                <span className="grow">
+                  <b>{c.title}</b>
+                  <small className="lsub muted">
+                    {c.situation} · {c.lines} câu
+                  </small>
+                </span>
+                <span className="lr">
+                  <span className="pill">HSK {c.level}</span>
+                  <small className={c.status === 'done' ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
+                    {c.status === 'done' ? '✓ đã đọc' : 'mới'}
+                  </small>
+                  <span className="chev" aria-hidden="true">
+                    {open === c.id ? '▾' : '▸'}
+                  </span>
+                </span>
+              </button>
+              {open === c.id ? (
+                <div className="stack">
+                  {err ? <div className="alert">{err}</div> : null}
+                  {lesson ? reader : !err ? <p className="muted">Đang mở bài…</p> : null}
+                </div>
+              ) : null}
+              </Fragment>
+            ),
+          )}
+        </div>
 
         <Link href="/su-kien" className="card row between">
           <span>
