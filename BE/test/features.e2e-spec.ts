@@ -409,9 +409,46 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(one.body.kind).toBe('READING');
       expect(one.body.lines[0].zh).toBeTruthy(); // chữ hiện ngay
       expect(one.body.questions[0].promptVi).toBeUndefined(); // bản dịch câu hỏi chỉ sau khi trả lời
-      const done = await request(http()).post('/api/v1/lessons/doc-ngay/answers').set(u.auth).send({ answers: [0, 0] }).expect(200);
-      expect(done.body.correct).toBe(2);
+      expect(one.body.lines.length).toBeGreaterThanOrEqual(10); // bài đọc dài (viết lại 23/10/2026)
+      const done = await request(http()).post('/api/v1/lessons/doc-ngay/answers').set(u.auth).send({ answers: [1, 0, 2, 0] }).expect(200);
+      expect(done.body.correct).toBe(4);
       expect(done.body.mission).toBeNull(); // đọc không tính nhiệm vụ nghe
+    });
+
+    it('kiểm tra từ vựng: bộ HSK 1-3, tối thiểu 20 câu, chấm cứng, câu nghe mỗi phần nửa điểm, mức sẵn sàng', async () => {
+      const u = S;
+      const ov = await request(http()).get('/api/v1/vocab-test').set(u.auth).expect(200);
+      expect(ov.body.sets.map((s: { total: number }) => s.total)).toEqual([150, 147, 298]);
+      expect(ov.body.readiness).toHaveLength(3);
+      await request(http()).post('/api/v1/vocab-test/start').set(u.auth).send({ source: 'hsk', level: 1, count: 19, mode: 'zh2vi' }).expect(400);
+      await request(http()).post('/api/v1/vocab-test/start').set(u.auth).send({ source: 'hsk', level: 4, count: 20, mode: 'zh2vi' }).expect(400);
+
+      // Hán → Việt: trả lời đúng nghĩa đầu tiên cho mọi câu có nghĩa viết ra được
+      const st = await request(http()).post('/api/v1/vocab-test/start').set(u.auth).send({ source: 'hsk', level: 1, count: 20, mode: 'zh2vi' }).expect(201);
+      expect(st.body.questions).toHaveLength(20);
+      const words = await prisma.word.findMany({ where: { hsk2List: 1 }, select: { zh: true, vi: true } });
+      const viOf = new Map(words.map((w) => [w.zh, w.vi]));
+      const first = (vi: string) => vi.replace(/\([^)]*\)/g, '').split(/[,;]/)[0].trim();
+      const answers = st.body.questions.map((q: { mode: string; zh?: string; vi?: string }) =>
+        q.mode === 'zh2vi' ? { vi: first(viOf.get(q.zh!)!).toUpperCase() } : { zh: words.find((w) => w.vi === q.vi)!.zh },
+      );
+      const done = await request(http()).post(`/api/v1/vocab-test/${st.body.id}/submit`).set(u.auth).send({ answers }).expect(200);
+      expect(done.body.pct).toBe(100);
+      expect(done.body.readiness.vocab.best.pct).toBe(100);
+      await request(http()).post(`/api/v1/vocab-test/${st.body.id}/submit`).set(u.auth).send({ answers }).expect(400); // nộp lại
+
+      // Nghe: chỉ đúng chữ Hán = 0,5 điểm; pinyin không được nhận
+      const au = await request(http()).post('/api/v1/vocab-test/start').set(u.auth).send({ source: 'hsk', level: 1, count: 20, mode: 'audio' }).expect(201);
+      const q0 = au.body.questions[0];
+      const ans = au.body.questions.map((q: { zh?: string }, i: number) => (i === 0 ? { zh: q0.mode === 'audio' ? q0.zh : '' } : { zh: 'nihao', vi: 'sai' }));
+      const r = await request(http()).post(`/api/v1/vocab-test/${au.body.id}/submit`).set(u.auth).send({ answers: ans }).expect(200);
+      expect(r.body.detail[1].zhOk).toBe(false);
+      if (q0.mode === 'audio') expect(r.body.detail[0].score).toBe(0.5);
+
+      // Sổ tay: không giới hạn tối thiểu 20
+      await request(http()).post('/api/v1/notebook').set(u.auth).send({ zh: '咖啡' }).expect(201);
+      const nb = await request(http()).post('/api/v1/vocab-test/start').set(u.auth).send({ source: 'notebook', count: 1, mode: 'vi2zh' }).expect(201);
+      expect(nb.body.questions).toHaveLength(1);
     });
 
     it('bài tập viết: đáp án không lộ, chấm đúng/sai, khóa theo cấp', async () => {

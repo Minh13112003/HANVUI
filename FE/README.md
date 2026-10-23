@@ -29,7 +29,7 @@ BE phải chạy sẵn (mặc định `http://localhost:3001/api/v1`, xem `../BE
 | `/hoc/tu-vung/[topic]` | Bảng từ: che nghĩa, nghe; chạm một từ mở bảng **cách viết từng nét + tập viết** |
 | `/hoc/nghe`, `/hoc/nghe/[id]` | Danh sách hội thoại (chọn HSK 1/2/3, tìm kiếm, lọc chủ đề) và bài học |
 | `/hoc/noi`, `/hoc/doc`, `/hoc/viet` | Nói, Đọc, Viết (bản mẫu) |
-| `/so-tay`, `/so-tay/kiem-tra`, `/so-tay/lat-the` | Sổ tay (theo ngày / chủ đề), kiểm tra 8 câu, lật thẻ |
+| `/so-tay`, `/so-tay/kiem-tra` | Sổ tay (theo ngày / chủ đề), kiểm tra từ vựng tự luận (Sổ tay hoặc bộ từ HSK 1-3) |
 | `/su-kien`, `/su-kien/xep-hang`, `/su-kien/luat` | Bảng 12 ô, gợi ý, hồi truyện, xếp hạng, luật chơi |
 | `/them`, `/them/tui-do`, `/them/huong-dan` | Tài khoản, chuẩn/cấp HSK, giao diện sáng tối, túi đồ, hướng dẫn |
 

@@ -97,6 +97,7 @@ model User {
   items         InventoryItem[]
   levelStats    UserLevelStat[]
   examAttempts  ExamAttempt[]
+  vocabTests    VocabTest[]
   mails         UserMail[]
 }
 
@@ -153,6 +154,7 @@ model Word {
   pos       String? // loại từ
   phrase    Boolean @default(false)
   hsk2      Int? // cấp HSK 2.0 (1-6)
+  hsk2List  Int? // cấp trong DANH SÁCH từ HSK 2.0 (chỉ từ có đúng trong danh sách; hsk2 còn gán cho từ ghép suy ra). Dùng cho bộ kiểm tra từ vựng.
   hsk3      Int? // cấp HSK 3.0 (1-9)
   example   Json? // { zh, pinyin, vi }
   audioKey  String? // khóa file âm thanh của riêng từ trên R2 (audio/words/...)
@@ -550,6 +552,26 @@ model ExamAttempt {
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// Một lần kiểm tra từ vựng (Sổ tay hoặc bộ từ HSK). Chỉ để người học tự đánh giá, không ảnh hưởng lên cấp.
+model VocabTest {
+  id          Int       @id @default(autoincrement())
+  userId      String    @db.Uuid
+  source      String // 'hsk' | 'notebook'
+  level       Int? // cấp HSK 2.0 của bộ từ (source = hsk)
+  mode        String // 'zh2vi' | 'vi2zh' | 'audio' | 'mix'
+  items       Json // [{ zh, mode }] theo thứ tự câu
+  setSize     Int // số từ của cả bộ lúc làm (để biết có làm toàn bộ không)
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+  score       Float? // tổng điểm (câu nghe: mỗi phần 0,5)
+  pct         Int? // phần trăm điểm
+  detail      Json? // chấm từng câu
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, level])
 }
 
 /// Bài tập viết tự chấm (kỹ năng Viết). `data` giữ đáp án nên không bao giờ gửi nguyên cho người học.

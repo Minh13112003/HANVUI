@@ -2,6 +2,7 @@
 // Làm đề nâng cấp (rule.md mục 4): chọn cấp → làm đề (nghe, đọc, viết, có đồng hồ) → nộp → xem điểm.
 // Đạt đề của đúng cấp hiện tại thì lên cấp kế (BE tự cập nhật, FE tải lại hồ sơ).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ReadinessCard from '@/components/ReadinessCard';
 import Shell from '@/components/Shell';
 import { api, authApi } from '@/lib/api';
 import { play, stopAll } from '@/lib/audio';
@@ -279,6 +280,7 @@ export default function ExamPage() {
         {list?.note ? <div className="alert">{list.note}</div> : null}
         {err ? <div className="alert">{err}</div> : null}
         {!list ? <p className="muted">Đang tải…</p> : null}
+        {list ? <ReadinessCard level={list.currentLevel} showTestLink /> : null}
         {list?.levels.map((l) => {
           const mine = l.level === list.currentLevel;
           return (

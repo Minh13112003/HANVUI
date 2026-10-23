@@ -55,11 +55,17 @@ interface Tok {
 
 async function main() {
   // ── Từ vựng ──
-  const words = await prisma.word.findMany({ select: { id: true, zh: true, hsk2: true, hsk3: true } });
+  const words = await prisma.word.findMany({ select: { id: true, zh: true, hsk2: true, hsk3: true, hsk2List: true } });
   let changed = 0;
   let unknown = 0;
   for (const w of words) {
     const l = levelsOf(w.zh);
+    // hsk2List: chỉ từ có ĐÚNG trong danh sách HSK 2.0 (bộ kiểm tra từ vựng theo cấp).
+    const list = l.exact ? l.hsk2 : null;
+    if (list !== w.hsk2List) {
+      await prisma.word.update({ where: { id: w.id }, data: { hsk2List: list } });
+      changed++;
+    }
     if (l.hsk2 === null && l.hsk3 === null) {
       unknown++;
       continue;

@@ -95,7 +95,7 @@ try {
     });
     made++;
   }
-  // Bài đọc (kỹ năng Đọc): mỗi câu là một dòng, vai 'N', không có âm thanh.
+  // Bài đọc (kỹ năng Đọc): mỗi câu là một dòng, vai 'N', không có âm thanh. Chỉ thêm bài chưa có; muốn thay nội dung dùng pnpm db:seed:readings.
   await prisma.topic.upsert({
     where: { id: 'bai-doc' },
     create: { id: 'bai-doc', kind: 'SITUATION', name: 'Bài đọc', glyph: '读', sort: 99 },
@@ -126,14 +126,7 @@ try {
     reads++;
   }
 
-  // Giọng người đọc cho bài đọc (để tạo âm thanh); bổ sung cho cả bài đã nạp trước đó.
-  for (const r of READINGS) {
-    await prisma.lessonRole.upsert({
-      where: { lessonId_who: { lessonId: r.id, who: 'N' } },
-      create: { lessonId: r.id, who: 'N', label: 'Người đọc', gender: 'f', pitchRange: 2, voiceId: VOICE.f2 },
-      update: {},
-    });
-  }
+  // Bài đọc không có âm thanh (không tạo giọng người đọc). Nạp lại nội dung bài đọc: pnpm db:seed:readings.
 
   // Bài tập viết
   if (force) await prisma.writingItem.deleteMany({});

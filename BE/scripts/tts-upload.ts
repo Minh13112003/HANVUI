@@ -99,7 +99,7 @@ async function check() {
 /** Đối chiếu DB với R2: câu nào thiếu file, file nào trên R2 không còn ai dùng, và thử tải vài file thật. */
 async function verify() {
   const lines = await prisma.lessonLine.findMany({
-    where: { lesson: { published: true } },
+    where: { lesson: { published: true, kind: { not: 'READING' } } }, // bài đọc không có âm thanh
     select: { lessonId: true, idx: true, audioKey: true },
     orderBy: [{ lessonId: 'asc' }, { idx: 'asc' }],
   });
@@ -154,7 +154,8 @@ async function main() {
 
   const force = args.includes('--force');
   const ids = args.filter((a) => !a.startsWith('--'));
-  const where = args.includes('--all') || !ids.length ? { published: true } : { id: { in: ids } };
+  // Bài đọc (READING) không có âm thanh nên luôn bỏ qua.
+  const where = args.includes('--all') || !ids.length ? { published: true, kind: { not: 'READING' as const } } : { id: { in: ids }, kind: { not: 'READING' as const } };
   const lessons = await prisma.lesson.findMany({
     where,
     include: { roles: true, lines: { orderBy: { idx: 'asc' } } },

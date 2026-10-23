@@ -96,14 +96,9 @@ export default function NotebookPage() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm chữ Hán, pinyin hoặc nghĩa" aria-label="Tìm từ" />
         </div>
 
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn sm grow" disabled={!data?.total} onClick={() => review(data!.groups.flatMap((g) => g.words))}>
-            Kiểm tra 8 câu
-          </button>
-          <Link className="btn sm grow" href="/so-tay/lat-the" style={{ textAlign: 'center' }}>
-            Lật thẻ
-          </Link>
-        </div>
+        <Link className="btn primary sm" href="/so-tay/kiem-tra" style={{ textAlign: 'center' }}>
+          Kiểm tra từ vựng (Sổ tay hoặc bộ từ HSK 1-3)
+        </Link>
 
         {data?.groups.map((g) => (
           <section className="ngroup" key={g.key}>

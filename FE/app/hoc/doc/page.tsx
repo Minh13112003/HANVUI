@@ -1,6 +1,6 @@
 'use client';
 // Kỹ năng Đọc (rule.md mục 3.5): bài đọc theo cấp HSK. Chữ hiện ngay (khác hội thoại), chạm từng từ để xem nghĩa
-// và lưu, có câu hỏi hiểu bài tự chấm. Bài cấp cao hơn cấp người học bị khóa.
+// và lưu, có câu hỏi hiểu bài tự chấm. Bài cấp cao hơn cấp người học bị khóa. Bài đọc không có âm thanh.
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
@@ -8,7 +8,6 @@ import SkillNav from '@/components/SkillNav';
 import SuggestWords from '@/components/SuggestWords';
 import WordSheet from '@/components/WordSheet';
 import { api } from '@/lib/api';
-import { play } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
 import { useUi } from '@/lib/ui';
 import type { AnswerResult, Lesson, LessonCard } from '@/lib/types';
@@ -70,7 +69,6 @@ export default function ReadPage() {
     load(id);
   };
 
-  const full = lesson?.lines.map((l) => l.zh ?? '').join('') ?? '';
   const answered = !!result || !!lesson?.progress.allDone;
 
   const reader = lesson ? (
@@ -83,11 +81,6 @@ export default function ReadPage() {
                     {lesson.title} · HSK {lesson.level}
                   </small>
                 </div>
-                <button className="icon-btn" aria-label="Nghe cả bài" onClick={() => play(full, null, {})}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                    <path d="M4 9v6h3l5 4V5L7 9H4zM16 8.5a4 4 0 0 1 0 7" />
-                  </svg>
-                </button>
               </div>
               <div className="row" style={{ gap: 12 }}>
                 <span className="sw">

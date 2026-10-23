@@ -1,4 +1,4 @@
-// Nghĩa tiếng Việt cho các từ/chữ xuất hiện trong lời thoại mà bảng từ chưa có (soạn 20/10/2026, CHƯA QUA DUYỆT).
+// Nghĩa tiếng Việt cho các từ/chữ xuất hiện trong lời thoại mà bảng từ chưa có (soạn 20/10/2026, bổ sung cho bài đọc 23/10/2026; CHƯA QUA DUYỆT).
 // Định dạng gọn: "chữ|nghĩa|loại từ". Chữ đơn là mảnh của từ ghép thì ghi nghĩa của chữ đó.
 const RAW = `点|chút, giờ, chấm|lượng từ
 工作|công việc, làm việc|danh từ
@@ -469,7 +469,223 @@ const RAW = `点|chút, giờ, chấm|lượng từ
 顺利|thuận lợi|tính từ
 脏|bẩn|tính từ
 头|đầu|danh từ
-这时候|lúc này|cụm từ`;
+这时候|lúc này|cụm từ
+上午|buổi sáng|danh từ
+做饭|nấu cơm|động từ
+电视|ti vi|danh từ
+妹妹|em gái|danh từ
+大学生|sinh viên|danh từ
+高|cao|tính từ
+打篮球|chơi bóng rổ|cụm từ
+狗|chó|danh từ
+白色|màu trắng|danh từ
+椅子|ghế|danh từ
+大卫|David (tên người)|danh từ
+越南语|tiếng Việt|danh từ
+汉字|chữ Hán|danh từ
+明年|năm sau|danh từ
+打球|chơi bóng|cụm từ
+开车|lái xe|động từ
+鸡蛋|trứng gà|danh từ
+壶|ấm, bình|lượng từ
+美国|nước Mỹ|danh từ
+懂|hiểu|động từ
+节|tiết (học)|lượng từ
+饭馆|quán ăn|danh từ
+中文|tiếng Trung|danh từ
+英文|tiếng Anh|danh từ
+响|reo, kêu|động từ
+王方|Vương Phương (tên người)|danh từ
+有时|có lúc|phó từ
+有时间|có thời gian, rảnh|cụm từ
+湿|ướt|tính từ
+觉|giấc ngủ|danh từ
+早就|đã từ lâu, sớm đã|phó từ
+第二|thứ hai|số từ
+广州|Quảng Châu|danh từ
+看到|nhìn thấy|động từ
+最好|tốt nhất|tính từ
+非|không phải (văn viết)|phó từ
+好汉|hảo hán, người có chí khí|danh từ
+句|câu|lượng từ
+有意思|thú vị|tính từ
+烤鸭|vịt quay|danh từ
+书店|hiệu sách|danh từ
+问路|hỏi đường|động từ
+词|từ|danh từ
+路上|trên đường|danh từ
+回到|trở về, về đến|động từ
+比如|ví dụ như|liên từ
+黑|đen, tối|tính từ
+伤|vết thương, bị thương|danh từ
+上个月|tháng trước|cụm từ
+运动|vận động, thể thao|danh từ
+运动鞋|giày thể thao|danh từ
+世界杯|World Cup (cúp bóng đá thế giới)|danh từ
+河内|Hà Nội|danh từ
+春卷|nem cuốn, chả giò|danh từ
+刚|vừa mới|phó từ
+厚|dày|tính từ
+房子|nhà, căn nhà|danh từ
+搬家|chuyển nhà|động từ
+短信|tin nhắn|danh từ
+但|nhưng|liên từ
+商场|trung tâm thương mại|danh từ
+进去|đi vào|động từ
+合适|vừa vặn, phù hợp|tính từ
+卖|bán|động từ
+本来|vốn dĩ, ban đầu|phó từ
+从来|từ trước đến nay|phó từ
+外地|nơi khác, tỉnh khác|danh từ
+西红柿|cà chua|danh từ
+炒|xào|động từ
+洗|rửa, giặt|động từ
+切|cắt|động từ
+成|thành|động từ
+油|dầu ăn|danh từ
+盐|muối|danh từ
+咸|mặn|tính từ
+加|thêm|động từ
+味道|mùi vị|danh từ
+不容易|không dễ|cụm từ
+辛苦|vất vả|tính từ
+不管|bất kể, dù|liên từ
+扔|vứt|động từ
+事情|sự việc, chuyện|danh từ
+留|để lại, giữ lại|động từ
+贴|dán|động từ
+福|phúc|danh từ
+故意|cố ý|phó từ
+倒|ngược, lộn ngược|động từ
+过来|qua đây, lại|động từ
+意思|ý nghĩa|danh từ
+除夕|đêm giao thừa|danh từ
+余|dư, thừa|động từ
+家庭|gia đình|danh từ
+新年|năm mới|danh từ
+到来|đến, tới|động từ
+长辈|bậc trên, người lớn tuổi|danh từ
+不一定|không nhất thiết|cụm từ
+代表|đại diện, tượng trưng|động từ
+祝福|lời chúc phúc|danh từ
+穿上|mặc vào|động từ
+亲戚|họ hàng|danh từ
+拜年|chúc Tết|động từ
+提前|trước, sớm hơn|động từ
+查|tra, kiểm tra|động từ
+资料|tài liệu|danh từ
+四季|bốn mùa|danh từ
+城|thành phố, thành|danh từ
+春城|thành phố mùa xuân (tên gọi Côn Minh)|danh từ
+头晕|chóng mặt|tính từ
+当地|địa phương|danh từ
+怎么办|làm sao bây giờ|cụm từ
+绑|buộc|động từ
+丝带|ruy băng|danh từ
+旅行|chuyến đi, du lịch|danh từ
+难忘|khó quên|tính từ
+半夜|nửa đêm|danh từ
+精神|tinh thần, sức sống|danh từ
+内容|nội dung|danh từ
+期末|cuối kỳ|danh từ
+通过|thông qua, thi đỗ|động từ
+谈话|cuộc nói chuyện|danh từ
+谈|nói chuyện|động từ
+下去|tiếp tục (như thế)|động từ
+定|đặt ra, định|động từ
+闹钟|đồng hồ báo thức|danh từ
+继续|tiếp tục|động từ
+坚持|kiên trì|động từ
+学期|học kỳ|danh từ
+进步|tiến bộ|động từ
+熟悉|quen thuộc|tính từ
+加班|tăng ca|động từ
+交通|giao thông|danh từ
+只能|chỉ có thể|cụm từ
+租|thuê|động từ
+夜景|cảnh đêm|danh từ
+那么|như thế, nhiều thế|đại từ
+想起|nhớ ra, nhớ đến|động từ
+婚礼|đám cưới|danh từ
+职员|nhân viên|danh từ
+简历|sơ yếu lý lịch|danh từ
+面试|phỏng vấn|động từ
+信息|thông tin|danh từ
+严肃|nghiêm nghị|tính từ
+而是|mà là|liên từ
+老实|thật thà|tính từ
+诚实|thành thật|tính từ
+接到|nhận được|động từ
+录取|tuyển, nhận vào|động từ
+充分|đầy đủ, kỹ càng|tính từ
+离不开|không thể thiếu, không rời được|cụm từ
+确实|quả thật|phó từ
+带来|mang lại|động từ
+就算|dù cho|liên từ
+钱包|ví tiền|danh từ
+整天|cả ngày|danh từ
+不安|bất an|tính từ
+聊|trò chuyện|động từ
+关掉|tắt đi|động từ
+轻松|thư thái, nhẹ nhõm|tính từ
+本身|bản thân (nó)|đại từ
+好坏|tốt xấu|danh từ
+关键|mấu chốt|danh từ
+使用|sử dụng|động từ
+多年|nhiều năm|danh từ
+工资|tiền lương|danh từ
+那时候|thời đó, lúc đó|cụm từ
+了不起|ghê gớm, phi thường|tính từ
+工厂|nhà máy|danh từ
+例外|ngoại lệ|danh từ
+劝|khuyên|động từ
+一辈子|cả đời|danh từ
+舍不得|không nỡ|động từ
+擦|lau|động từ
+干干净净|sạch sẽ, sạch bóng|tính từ
+修|sửa|động từ
+摔倒|ngã|động từ
+膝盖|đầu gối|danh từ
+破|rách, trầy|tính từ
+差点儿|suýt nữa|phó từ
+扶|đỡ, vịn|động từ
+转|quay, đi vòng|động từ
+圈|vòng|lượng từ
+年纪|tuổi tác|danh từ
+骑车|đạp xe|động từ
+交给|giao cho|động từ
+保护|bảo vệ|động từ
+政府|chính quyền|danh từ
+购物袋|túi mua sắm|danh từ
+塑料袋|túi ni lông|danh từ
+刷牙|đánh răng|động từ
+小区|khu dân cư|danh từ
+垃圾|rác|danh từ
+分成|chia thành|động từ
+类|loại|lượng từ
+大人|người lớn|danh từ
+孙子|cháu nội (trai)|danh từ
+不行|không được|tính từ
+读|đọc|động từ
+女儿|con gái|danh từ
+日|ngày, mặt trời|danh từ
+先生|ông, ngài, chồng|danh từ
+小姐|cô, tiểu thư|danh từ
+报纸|báo, tờ báo|danh từ
+船|thuyền, tàu thủy|danh từ
+公斤|ki-lô-gam, cân, kg|lượng từ
+教室|phòng học, lớp học|danh từ
+千|nghìn, ngàn|số từ
+晴|nắng, trời quang|tính từ
+生病|bị ốm, ốm, sinh bệnh|động từ
+手表|đồng hồ đeo tay|danh từ
+跳舞|nhảy, nhảy múa, khiêu vũ|động từ
+西瓜|dưa hấu|danh từ
+向|hướng về, về phía|giới từ
+羊肉|thịt cừu, thịt dê|danh từ
+阴|âm u, trời râm|tính từ
+元|đồng, tệ (đơn vị tiền)|lượng từ
+左边|bên trái|danh từ`;
 
 const FIX_POS: Record<string, string> = { 形容词: 'tính từ', 动词: 'động từ', 连词: 'liên từ' };
 
