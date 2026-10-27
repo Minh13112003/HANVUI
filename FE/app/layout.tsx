@@ -6,6 +6,7 @@ import SwRegister from './sw-register';
 import './globals.css';
 import './theme.css';
 import './theme-v2.css';
+import './theme-sky.css';
 
 // Chữ Hán dùng phông có sẵn của máy (Noto Serif SC / PingFang / Microsoft YaHei) như bản demo:
 // phông CJK rất nặng, tải về sẽ làm app chậm trên điện thoại.
@@ -38,11 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={ui.variable}>
       <head>
-        {/* Đặt giao diện sáng/tối trước khi vẽ để không bị nháy màu. */}
+        {/* Đặt giao diện sáng/tối và màu chủ đề trước khi vẽ để không bị nháy màu. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('hv.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+              "try{var d=document.documentElement,t=localStorage.getItem('hv.theme'),p=localStorage.getItem('hv.palette');if(t==='light'||t==='dark')d.setAttribute('data-theme',t);if(p==='sky')d.setAttribute('data-palette',p)}catch(e){}",
           }}
         />
       </head>

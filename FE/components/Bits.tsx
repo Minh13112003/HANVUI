@@ -87,8 +87,9 @@ export function Ring({ done, total, label }: { done: number; total: number; labe
       <svg viewBox="0 0 84 84" aria-hidden="true">
         <defs>
           <linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#0b6457" />
-            <stop offset="1" stopColor="#16a890" />
+            {/* Màu theo chủ đề (theme-sky.css đặt --ring-a/--ring-b), mặc định ngọc bích. */}
+            <stop offset="0" style={{ stopColor: 'var(--ring-a, #0b6457)' }} />
+            <stop offset="1" style={{ stopColor: 'var(--ring-b, #16a890)' }} />
           </linearGradient>
         </defs>
         <circle cx="42" cy="42" r={R} fill="none" stroke="var(--surface2)" strokeWidth="9" />

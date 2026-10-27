@@ -12,6 +12,13 @@ import { useUi } from '@/lib/ui';
 import type { MailCounts } from '@/lib/types';
 
 type Theme = 'auto' | 'light' | 'dark';
+type Palette = 'jade' | 'sky';
+
+/** Màu chủ đề (theme-sky.css). Ô xem trước vẽ bằng màu cố định của từng chủ đề. */
+const PALETTES: { id: Palette; name: string; note: string; sw: [string, string, string] }[] = [
+  { id: 'jade', name: 'Ngọc bích', note: 'Mặc định', sw: ['#103C36', '#0E7466', '#EEF2F0'] },
+  { id: 'sky', name: 'Trời – Biển', note: 'Xanh da trời', sw: ['#0B2E52', '#0369A1', '#EAF3FA'] },
+];
 
 /** Quy đổi gần đúng HSK 3.0 → 2.0 (xem BE/src/common/hsk.ts). */
 const HSK3_TO_HSK2 = [2, 3, 4, 5, 6, 6, 6, 6, 6];
@@ -21,6 +28,7 @@ export default function MorePage() {
   const { toast } = useUi();
   const router = useRouter();
   const [theme, setTheme] = useState<Theme>('auto');
+  const [palette, setPalette] = useState<Palette>('jade');
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
@@ -34,8 +42,24 @@ export default function MorePage() {
   }, []);
 
   useEffect(() => {
-    setTheme((localStorage.getItem('hv.theme') as Theme) || 'auto');
+    try {
+      setTheme((localStorage.getItem('hv.theme') as Theme) || 'auto');
+      setPalette(localStorage.getItem('hv.palette') === 'sky' ? 'sky' : 'jade');
+    } catch {
+      /* trình duyệt chặn lưu: giữ mặc định */
+    }
   }, []);
+
+  const applyPalette = (p: Palette) => {
+    setPalette(p);
+    try {
+      localStorage.setItem('hv.palette', p);
+    } catch {
+      /* vẫn đổi được trong phiên này */
+    }
+    if (p === 'jade') document.documentElement.removeAttribute('data-palette');
+    else document.documentElement.setAttribute('data-palette', p);
+  };
 
   const applyTheme = (t: Theme) => {
     setTheme(t);
@@ -204,8 +228,44 @@ export default function MorePage() {
         </section>
 
         <section className="card stack">
+          <span style={{ fontWeight: 600 }}>Màu chủ đề</span>
+          <div role="radiogroup" aria-label="Màu chủ đề" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            {PALETTES.map((p) => {
+              const on = palette === p.id;
+              return (
+                <button
+                  key={p.id}
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => applyPalette(p.id)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: 10,
+                    borderRadius: 16,
+                    textAlign: 'left',
+                    background: 'var(--surface)',
+                    border: on ? '2px solid var(--accent)' : '2px solid var(--line)',
+                    minWidth: 0,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ display: 'flex', height: 34, borderRadius: 10, overflow: 'hidden' }}>
+                    {p.sw.map((c) => (
+                      <i key={c} style={{ flex: 1, background: c }} />
+                    ))}
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <b style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</b>
+                    {on ? <span style={{ color: 'var(--accent)', fontWeight: 800 }}>✓</span> : null}
+                  </span>
+                  <small className="muted">{p.note}</small>
+                </button>
+              );
+            })}
+          </div>
           <label className="field">
-            Giao diện
+            Sáng / tối
             <select value={theme} onChange={(e) => applyTheme(e.target.value as Theme)}>
               <option value="auto">Theo máy</option>
               <option value="light">Sáng</option>
