@@ -7,6 +7,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client.js';
 import { GRAMMAR as BASE } from './content/grammar.js';
 import { GRAMMAR_MORE } from './content/grammar2.js';
+import { GRAMMAR_VISUAL } from './content/grammar-visual.js';
 
 // Thứ tự trong danh sách: theo cấp, trong cấp theo thứ tự soạn (bộ gốc trước, bộ mở rộng sau).
 const GRAMMAR = [...BASE, ...GRAMMAR_MORE].map((g, i) => ({ g, i })).sort((a, b) => a.g.level - b.g.level || a.i - b.i).map((x) => x.g);
@@ -20,6 +21,10 @@ try {
   const slugs = GRAMMAR.map((g) => g.slug);
   if (new Set(slugs).size !== slugs.length) throw new Error('slug bị trùng');
   for (const g of GRAMMAR) {
+    const v = GRAMMAR_VISUAL[g.slug];
+    if (!v) throw new Error(`${g.slug}: thiếu hình trực quan (content/grammar-visual.ts)`);
+    if (v.icons.length !== g.examples.length) throw new Error(`${g.slug}: số biểu tượng phải bằng số ví dụ`);
+    for (const r of v.rows) for (const b of r.split(' + ')) if (!/@[svaotpnqkx]/.test(b)) throw new Error(`${g.slug}: khối sơ đồ sai cú pháp: ${b}`);
     if (g.examples.length < 3) throw new Error(`${g.slug}: cần ít nhất 3 ví dụ`);
     if (g.practice.length < 4) throw new Error(`${g.slug}: cần ít nhất 4 bài luyện`);
     for (const p of g.practice) {
@@ -39,6 +44,7 @@ try {
     const data = {
       level: g.level, category: g.category, title: g.title, pattern: g.pattern, explain: g.explain, compare: g.compare,
       mistake: g.mistake, sort: i, examples: g.examples.map(([zh, vi]) => ({ zh, pinyin: py(zh), vi })),
+      visual: GRAMMAR_VISUAL[g.slug] ? { ...GRAMMAR_VISUAL[g.slug] } : undefined,
     };
     const row = await prisma.grammarPoint.upsert({ where: { slug: g.slug }, create: { slug: g.slug, ...data }, update: data });
     if (force) await prisma.writingItem.deleteMany({ where: { grammarId: row.id } });

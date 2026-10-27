@@ -55,6 +55,15 @@ export default function GuidePage() {
     <Shell title="Hướng dẫn">
       <div className="stack guidetext">
         <h1>Cách dùng HanVui trong 5 bước</h1>
+        <Link className="card row" href="/lo-trinh" style={{ gap: 12, borderLeft: '4px solid var(--accent)' }}>
+          <span className="grow">
+            <b>Mới bắt đầu tiếng Trung?</b>
+            <small className="muted" style={{ display: 'block' }}>
+              Mở Lộ trình cho người mới: học pinyin, thanh điệu, nét chữ rồi đi từng bước tới HSK 2.
+            </small>
+          </span>
+          <span className="chev">›</span>
+        </Link>
 
         <div className="rail">
           {STEPS.map((s, i) => (

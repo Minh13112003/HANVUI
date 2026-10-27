@@ -223,6 +223,10 @@ export default function MorePage() {
             <span className="grow">Luật sự kiện</span>
             <span className="chev">›</span>
           </Link>
+          <Link className="mrow2" href="/lo-trinh">
+            <span className="grow">Lộ trình cho người mới (tới HSK 2)</span>
+            <span className="chev">›</span>
+          </Link>
           <Link className="mrow2" href="/them/huong-dan">
             <span className="grow">Hướng dẫn · Cách dùng HanVui trong 5 bước</span>
             <span className="chev">›</span>

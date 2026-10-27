@@ -19,6 +19,12 @@ export default function WritePage() {
   const [words, setWords] = useState<string[]>([]);
   const [pick, setPick] = useState<string>('');
 
+  // Mở thẳng một tab từ liên kết (ví dụ Lộ trình → /hoc/viet?tab=grammar).
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t && ['stroke', 'grammar', 'order', 'fill', 'choose'].includes(t)) setMode(t as Mode);
+  }, []);
+
   // Chữ để tập viết: ưu tiên từ trong Sổ tay, chưa có thì lấy chủ đề đầu tiên.
   useEffect(() => {
     if (!user) return;

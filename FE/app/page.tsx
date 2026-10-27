@@ -77,6 +77,21 @@ export default function HomePage() {
           </div>
         </section>
 
+        {user && (user.hskStandard === 'HSK3' ? user.hskLevel <= 1 : user.hskLevel <= 2) ? (
+          <Link href="/lo-trinh" className="card row" style={{ gap: 12, borderLeft: '4px solid var(--accent)' }}>
+            <span className="han" style={{ fontSize: 30, lineHeight: 1 }} aria-hidden="true">
+              路
+            </span>
+            <span className="grow">
+              <b>Mới học tiếng Trung? Đi theo lộ trình</b>
+              <small className="muted" style={{ display: 'block' }}>
+                Pinyin, thanh điệu, nét chữ → HSK 1 → HSK 2. Mỗi bước chỉ rõ bấm gì.
+              </small>
+            </span>
+            <span className="chev">›</span>
+          </Link>
+        ) : null}
+
         <section className="stats">
           <div className="stat">
             <span className="ic han" aria-hidden="true">

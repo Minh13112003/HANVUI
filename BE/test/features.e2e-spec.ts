@@ -451,6 +451,48 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(nb.body.questions).toHaveLength(1);
     });
 
+    it('nói: so chữ máy nghe được với câu mẫu theo pinyin (đồng âm vẫn đúng, sai thanh nửa điểm)', async () => {
+      const r = await request(http()).post('/api/v1/speak/compare').set(S.auth).send({ target: '我想喝咖啡。', heard: '我想喝咖非' }).expect(200);
+      expect(r.body.score).toBe(100);
+      expect(r.body.syllables[4].verdict).toBe('homophone');
+      const t = await request(http()).post('/api/v1/speak/compare').set(S.auth).send({ target: '妈', heard: '马' }).expect(200);
+      expect(t.body.syllables[0].verdict).toBe('tone');
+    });
+
+    it('luyện dịch: đề không lộ đáp án, chấm theo cụm, tự đánh dấu đúng ý, khóa theo cấp', async () => {
+      const list = await request(http()).get('/api/v1/translate/grammar/ma-ne?direction=zh2vi').set(S.auth).expect(200);
+      expect(list.body.length).toBeGreaterThanOrEqual(3);
+      expect(JSON.stringify(list.body)).not.toContain('bác sĩ'); // chưa trả bản dịch
+      const item = list.body.find((x: { prompt: string }) => x.prompt === '你是医生吗？');
+      const ok = await request(http()).post('/api/v1/translate/check').set(S.auth).send({ itemId: item.id, direction: 'zh2vi', answer: 'Bạn là bác sĩ à?' }).expect(200);
+      expect(ok.body.verdict).toBe('ok');
+      expect(ok.body.reference.literal).toBeTruthy();
+      const half = await request(http()).post('/api/v1/translate/check').set(S.auth).send({ itemId: item.id, direction: 'zh2vi', answer: 'Bạn là y tá à?' }).expect(200);
+      expect(half.body.verdict).toBe('close');
+      await request(http()).post('/api/v1/translate/self').set(S.auth).send({ itemId: item.id, direction: 'zh2vi' }).expect(200);
+
+      const vz = await request(http()).get('/api/v1/translate/grammar/ma-ne?direction=vi2zh').set(S.auth).expect(200);
+      expect(vz.body[0].tiles.length).toBeGreaterThan(1);
+      const it2 = vz.body.find((x: { prompt: string }) => x.prompt === 'Bạn là bác sĩ à?');
+      const z = await request(http()).post('/api/v1/translate/check').set(S.auth).send({ itemId: it2.id, direction: 'vi2zh', answer: '你是医生吗' }).expect(200);
+      expect(z.body.exact).toBe(true);
+      await request(http()).get('/api/v1/translate/grammar/yuqi?direction=zh2vi').set(S.auth).expect(403); // HSK 4
+    });
+
+    it('tra từ có phần nhớ chữ: tách chữ (chỉ nghĩa/chỉ âm), cách nhớ, cụm từ, từ dễ nhầm; từ để viết từ trí nhớ', async () => {
+      const r = await request(http()).get(`/api/v1/words/lookup?zh=${encodeURIComponent('学生')}`).set(S.auth).expect(200);
+      expect(r.body.mnemonic).toBeTruthy();
+      expect(r.body.colloc[0].ex.length).toBeGreaterThan(0);
+      expect(r.body.chars).toHaveLength(2);
+      const hui = await request(http()).get(`/api/v1/words/lookup?zh=${encodeURIComponent('会')}`).set(S.auth).expect(200);
+      expect(hui.body.compare.some((c: { slug: string }) => c.slug === 'hui-neng-keyi')).toBe(true);
+      const ma = await request(http()).get(`/api/v1/words/lookup?zh=${encodeURIComponent('妈')}`).set(S.auth).expect(200);
+      expect(ma.body.chars[0].parts.some((p: { role: string }) => p.role === 'semantic')).toBe(true);
+      const ww = await request(http()).get('/api/v1/vocab-test/write-words?source=hsk&level=1&count=5').set(S.auth).expect(200);
+      expect(ww.body).toHaveLength(5);
+      expect(ww.body[0].zh).toBeTruthy();
+    });
+
     it('bài tập viết: đáp án không lộ, chấm đúng/sai, khóa theo cấp', async () => {
       const u = S;
       const g = await request(http()).get('/api/v1/writing?type=ORDER&count=3').set(u.auth).expect(200);

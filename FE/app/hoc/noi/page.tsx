@@ -1,9 +1,10 @@
 'use client';
-// Kỹ năng Nói (bản mẫu, rule.md mục 3.5): đọc theo mẫu — nghe mẫu, nghe chậm, ghi âm rồi tự đối chiếu.
-// Chấm phát âm tự động cần dịch vụ nhận dạng riêng, để giai đoạn sau.
+// Kỹ năng Nói (rule.md mục 3.5): đọc theo mẫu — nghe mẫu, nghe chậm; "Đọc để máy chấm" dùng nhận dạng giọng nói của
+// trình duyệt (miễn phí) rồi so với câu mẫu theo pinyin (SpeechCheck); vẫn giữ ghi âm để tự nghe lại.
 import { useEffect, useRef, useState } from 'react';
 import Shell from '@/components/Shell';
 import SkillNav from '@/components/SkillNav';
+import SpeechCheck from '@/components/SpeechCheck';
 import { Pinyin } from '@/components/WordSheet';
 import { api } from '@/lib/api';
 import { play, stopAll } from '@/lib/audio';
@@ -19,6 +20,7 @@ export default function SpeakPage() {
   const [i, setI] = useState(0);
   const [rec, setRec] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [readWhat, setReadWhat] = useState<'word' | 'sentence'>('word');
   const chunks = useRef<Blob[]>([]);
   const mr = useRef<MediaRecorder | null>(null);
 
@@ -75,7 +77,6 @@ export default function SpeakPage() {
         <SkillNav />
         <div className="row between">
           <h1>Đọc theo mẫu</h1>
-          <span className="tag demo">bản mẫu</span>
         </div>
 
         <div className="chips">
@@ -122,6 +123,16 @@ export default function SpeakPage() {
               ) : null}
             </div>
 
+            <div className="seg" role="tablist" aria-label="Đọc gì">
+              <button role="tab" aria-selected={readWhat === 'word'} className={readWhat === 'word' ? 'on' : ''} onClick={() => setReadWhat('word')}>
+                Đọc từ
+              </button>
+              <button role="tab" aria-selected={readWhat === 'sentence'} className={readWhat === 'sentence' ? 'on' : ''} disabled={!w.example} onClick={() => setReadWhat('sentence')}>
+                Đọc câu mẫu
+              </button>
+            </div>
+            <SpeechCheck target={readWhat === 'sentence' && w.example ? w.example.zh : w.zh} />
+
             <button className={'mic' + (rec ? ' rec' : '')} onClick={rec ? stop : start}>
               {rec ? <span className="pulse" /> : null}
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -143,8 +154,7 @@ export default function SpeakPage() {
                   </button>
                 </div>
                 <p className="muted" style={{ fontSize: 12 }}>
-                  Bản đầu chỉ nghe mẫu và tự đối chiếu. Chấm phát âm tự động cần dịch vụ nhận dạng phát âm riêng, sẽ làm
-                  ở giai đoạn sau (rule.md mục 3.5).
+                  Bản ghi chỉ nằm trên máy bạn, không gửi lên máy chủ.
                 </p>
               </div>
             ) : null}

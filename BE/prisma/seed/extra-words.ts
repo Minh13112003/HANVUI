@@ -685,7 +685,10 @@ const RAW = `点|chút, giờ, chấm|lượng từ
 羊肉|thịt cừu, thịt dê|danh từ
 阴|âm u, trời râm|tính từ
 元|đồng, tệ (đơn vị tiền)|lượng từ
-左边|bên trái|danh từ`;
+左边|bên trái|danh từ
+晚饭|bữa tối, cơm tối|danh từ
+选|chọn, lựa chọn|động từ
+总|luôn, lúc nào cũng|phó từ`;
 
 const FIX_POS: Record<string, string> = { 形容词: 'tính từ', 动词: 'động từ', 连词: 'liên từ' };
 

@@ -86,7 +86,7 @@ export const READINGS_HSK3: Reading[] = [
       ['亲爱的小王：你好！', 'Tiểu Vương thân mến: Chào bạn!'],
       ['好久没有给你写信了，最近我一直很忙，请你不要生气。', 'Lâu rồi không viết thư cho bạn, dạo này mình luôn rất bận, mong bạn đừng giận.'],
       ['上个月我换了工作，已经搬到上海了。', 'Tháng trước mình đổi việc, đã chuyển đến Thượng Hải rồi.'],
-      ['新公司的环境不错，同事们也都很热情，有问题的时候都愿意帮我。', 'Môi trường công ty mới không tệ, đồng nghiệp đều nhiệt tình, có vấn đề gì đều sẵn lòng giúp mình.'],
+      ['新公司的环境不错，同事们也很热情，遇到问题的时候，他们总会帮我。', 'Môi trường công ty mới không tệ, đồng nghiệp cũng nhiệt tình, gặp vấn đề gì họ luôn giúp mình.'],
       ['刚开始我对工作不太熟悉，每天都要加班到很晚。', 'Lúc đầu mình chưa quen việc lắm, ngày nào cũng phải tăng ca đến muộn.'],
       ['现在好多了，下班以后也有时间做自己喜欢的事情了。', 'Giờ đỡ nhiều rồi, tan làm cũng có thời gian làm việc mình thích.'],
       ['上海是一个很大的城市，交通很方便，坐地铁去哪儿都可以。', 'Thượng Hải là thành phố rất lớn, giao thông thuận tiện, đi tàu điện ngầm đi đâu cũng được.'],

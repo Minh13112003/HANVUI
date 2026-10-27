@@ -98,6 +98,7 @@ model User {
   levelStats    UserLevelStat[]
   examAttempts  ExamAttempt[]
   vocabTests    VocabTest[]
+  translations  TranslateDone[]
   mails         UserMail[]
 }
 
@@ -159,6 +160,8 @@ model Word {
   example   Json? // { zh, pinyin, vi }
   audioKey  String? // khóa file âm thanh của riêng từ trên R2 (audio/words/...)
   audioHash String? // băm chữ + giọng + nhà cung cấp; đổi thì sinh lại
+  mnemonic  String? // cách nhớ chữ (chiết tự / câu chuyện), content/word-extra-*.ts
+  colloc    Json? // [{ p: mẫu cụm từ, ex: [{ zh, pinyin, vi }] }]
 
   topic     Topic?     @relation(fields: [topicId], references: [id])
   userWords UserWord[]
@@ -606,6 +609,66 @@ model WritingDone {
   @@unique([userId, itemId])
 }
 
+/// Dữ liệu tách chữ Hán (Make Me a Hanzi, LGPL — prisma/seed/hanzi/LICENSE.md) + nghĩa tiếng Việt của chữ khi làm bộ phận.
+model Hanzi {
+  ch       String   @id
+  pinyin   String
+  vi       String? // nghĩa tiếng Việt ngắn (bộ thủ / bộ phận / chữ đơn)
+  ids      String // chuỗi mô tả cấu trúc, ví dụ ⿰米羔
+  radical  String
+  kind     String? // pictographic (tượng hình) · ideographic (hội ý) · pictophonetic (hình thanh)
+  semantic String? // bộ phận chỉ nghĩa (hình thanh)
+  phonetic String? // bộ phận chỉ âm (hình thanh)
+  parts    String[] // bộ phận trực tiếp
+}
+
+/// Nhóm từ dễ nhầm (辨析), content/word-compare.ts.
+model WordCompare {
+  id      Int      @id @default(autoincrement())
+  slug    String   @unique
+  level   Int
+  words   String[]
+  title   String
+  explain String
+  uses    Json // [{ zh, when, ex, exVi, exPinyin }]
+  trap    Json? // { wrong, right, why }
+}
+
+/// Câu luyện dịch Trung ↔ Việt theo điểm ngữ pháp (content/translate*.ts). Một câu luyện được cả hai chiều.
+model TranslateItem {
+  id        Int     @id @default(autoincrement())
+  grammarId Int
+  level     Int
+  zh        String
+  vi        String // bản dịch tự nhiên
+  literal   String // bản dịch sát chữ (để thấy vì sao dịch từng chữ nghe không xuôi)
+  chunks    Json // [{ zh, vi: string[] }] — vi rỗng = cụm không cần dịch ra
+  alt       String[] // cách viết tiếng Trung khác được nhận (Việt → Trung)
+  sort      Int     @default(0)
+
+  grammar GrammarPoint    @relation(fields: [grammarId], references: [id], onDelete: Cascade)
+  done    TranslateDone[]
+
+  @@unique([grammarId, zh])
+}
+
+/// Kết quả luyện dịch của người học, mỗi câu mỗi chiều một dòng. `self` = người học tự đánh giá "dịch đúng ý".
+model TranslateDone {
+  id        Int      @id @default(autoincrement())
+  userId    String   @db.Uuid
+  itemId    Int
+  direction String // 'zh2vi' | 'vi2zh'
+  correct   Boolean
+  self      Boolean  @default(false)
+  attempts  Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item TranslateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId, direction])
+}
+
 /// Điểm ngữ pháp (kỹ năng Viết → Ngữ pháp). Bài luyện nằm ở WritingItem.grammarId.
 model GrammarPoint {
   id       Int    @id @default(autoincrement())
@@ -618,9 +681,11 @@ model GrammarPoint {
   compare  String // so sánh với tiếng Việt/tiếng Anh
   mistake  String // lỗi hay gặp
   examples Json // [{ zh, pinyin, vi }]
+  visual   Json? // { rows: ["S@s + 比@k + B@o"], icons: [emoji theo từng ví dụ] } — sơ đồ khối màu (content/grammar-visual.ts)
   sort     Int    @default(0)
 
-  practice WritingItem[]
+  practice  WritingItem[]
+  translate TranslateItem[]
 
   @@index([level, sort])
 }

@@ -111,6 +111,25 @@ export class VocabTestService {
     return { level, vocab: { best, need: READY.vocab }, dialogs: { ...dialogs, need: READY.dialogs }, readings: { ...readings, need: READY.readings }, checks, ready: checks.vocab && checks.dialogs && checks.readings };
   }
 
+  /**
+   * Từ để luyện VIẾT TỪ TRÍ NHỚ (FE chấm nét bằng hanzi-writer nên cần chữ Hán): ngẫu nhiên `count` từ của bộ HSK
+   * hoặc Sổ tay. Chỉ lấy từ có chữ Hán (bỏ trợ từ không có nghĩa viết ra được để người học biết mình phải viết gì).
+   */
+  async writeWords(userId: string, source: 'hsk' | 'notebook', level: number | undefined, count: number) {
+    let pool: Entry[];
+    if (source === 'hsk') {
+      if (!level || !SET_LEVELS.includes(level as 1)) throw new BadRequestException('Chỉ có bộ từ HSK 1-3');
+      pool = await this.setWords(level);
+    } else {
+      const mine = await this.prisma.userWord.findMany({ where: { userId }, select: { zh: true } });
+      pool = [...(await this.dictionary(userId, mine.map((w) => w.zh))).values()];
+    }
+    pool = pool.filter((e) => /\p{Script=Han}/u.test(e.zh) && (hasPlainMeaning(e.vi) || alt(e.zh).length));
+    return shuffle(pool)
+      .slice(0, Math.min(Math.max(count, 1), 50))
+      .map((e) => ({ zh: e.zh, pinyin: e.pinyin, vi: e.vi }));
+  }
+
   async start(userId: string, dto: { source: 'hsk' | 'notebook'; level?: number; ids?: number[]; count: number; mode: ModeChoice }) {
     let pool: Entry[];
     let min = 1;

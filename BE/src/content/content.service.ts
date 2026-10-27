@@ -292,12 +292,21 @@ export class ContentService {
     return Object.fromEntries(rows.map((r) => [r.zh, r.audioKey]));
   }
 
-  /** Tra một từ: nghĩa, cấp, ví dụ, âm thanh và người học đã lưu từ này vào sổ tay chưa (để hiện nút Lưu hay Bỏ). */
+  /**
+   * Tra một từ: nghĩa, cấp, ví dụ, âm thanh, đã lưu vào sổ tay chưa; cùng phần giúp NHỚ CHỮ và NGHĨA (rule.md 3.1, 27/10/2026):
+   * tách từng chữ thành bộ phận (chỉ nghĩa / chỉ âm), cách nhớ, mẫu cụm từ + câu ví dụ, và các nhóm từ dễ nhầm có từ này.
+   */
   async lookupWord(userId: string, zh: string) {
-    const [word, saved] = await Promise.all([
+    const chars = [...new Set([...zh].filter((c) => /\p{Script=Han}/u.test(c)))];
+    const [word, saved, hanzi, compare] = await Promise.all([
       this.prisma.word.findFirst({ where: { zh } }),
       this.prisma.userWord.findUnique({ where: { userId_zh: { userId, zh } }, select: { id: true } }),
+      this.prisma.hanzi.findMany({ where: { ch: { in: chars } } }),
+      this.prisma.wordCompare.findMany({ where: { words: { has: zh } }, orderBy: { level: 'asc' } }),
     ]);
+    const partIds = [...new Set(hanzi.flatMap((h) => h.parts))];
+    const parts = new Map((await this.prisma.hanzi.findMany({ where: { ch: { in: partIds } }, select: { ch: true, pinyin: true, vi: true } })).map((p) => [p.ch, p]));
+    const byCh = new Map(hanzi.map((h) => [h.ch, h]));
     return {
       zh,
       pinyin: word?.pinyin ?? null,
@@ -308,6 +317,25 @@ export class ContentService {
       example: word?.example ?? null,
       audioKey: word?.audioKey ?? null,
       savedId: saved?.id ?? null,
+      mnemonic: word?.mnemonic ?? null,
+      colloc: word?.colloc ?? null,
+      chars: chars.map((c) => {
+        const h = byCh.get(c);
+        if (!h) return { ch: c, pinyin: '', vi: null, kind: null, parts: [] };
+        return {
+          ch: c,
+          pinyin: h.pinyin,
+          vi: h.vi,
+          kind: h.kind,
+          parts: h.parts.map((p) => ({
+            ch: p,
+            pinyin: parts.get(p)?.pinyin ?? '',
+            vi: parts.get(p)?.vi ?? null,
+            role: p === h.semantic ? 'semantic' : p === h.phonetic ? 'phonetic' : null,
+          })),
+        };
+      }),
+      compare: compare.map((c) => ({ slug: c.slug, title: c.title, words: c.words, explain: c.explain, uses: c.uses, trap: c.trap })),
     };
   }
 }

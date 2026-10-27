@@ -12,6 +12,7 @@ import { RedeemModule } from './redeem/redeem.module.js';
 import { MediaModule } from './media/media.module.js';
 import { NotebookModule } from './notebook/notebook.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { SpeakModule } from './speak/speak.module.js';
 import { VocabTestModule } from './vocab-test/vocab-test.module.js';
 
 @Module({
@@ -29,6 +30,7 @@ import { VocabTestModule } from './vocab-test/vocab-test.module.js';
     RedeemModule,
     ExamModule,
     VocabTestModule,
+    SpeakModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -32,6 +32,8 @@
     "db:seed:chapters": "tsx prisma/seed/seed-chapters.ts",
     "db:seed:ladder": "tsx prisma/seed/seed-ladder.ts",
     "db:seed:readings": "tsx prisma/seed/seed-readings.ts",
+    "db:seed:translate": "tsx prisma/seed/seed-translate.ts",
+    "db:seed:word-extra": "tsx prisma/seed/seed-word-extra.ts",
     "db:seed:grammar": "tsx prisma/seed/seed-grammar.ts",
     "db:seed:codes": "tsx prisma/seed/seed-codes.ts",
     "db:fix-hints": "tsx prisma/seed/fix-hints.ts",

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { CurrentUser, type AuthUser } from '../auth/auth.decorators.js';
@@ -11,6 +11,12 @@ class StartDto {
   @IsOptional() @IsArray() @ArrayMaxSize(2000) @IsInt({ each: true }) ids?: number[];
   @IsInt() @Min(1) @Max(2000) count!: number;
   @IsIn(['zh2vi', 'vi2zh', 'audio', 'mix']) mode!: ModeChoice;
+}
+
+class WriteQuery {
+  @IsIn(['hsk', 'notebook']) source!: 'hsk' | 'notebook';
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(3) level?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) count?: number;
 }
 
 class AnswerDto {
@@ -30,6 +36,12 @@ export class VocabTestController {
   @Get()
   overview(@CurrentUser() u: AuthUser) {
     return this.tests.overview(u.id);
+  }
+
+  /** Từ để luyện viết chữ từ trí nhớ (Sổ tay hoặc bộ HSK). */
+  @Get('write-words')
+  writeWords(@CurrentUser() u: AuthUser, @Query() q: WriteQuery) {
+    return this.tests.writeWords(u.id, q.source, q.level, q.count ?? 10);
   }
 
   @Post('start')

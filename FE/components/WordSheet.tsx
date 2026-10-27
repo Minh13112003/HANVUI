@@ -1,12 +1,13 @@
 'use client';
 // Nội dung bảng trượt khi chạm một từ: nghĩa, cách đọc (nghe thường/chậm, pinyin tô màu theo thanh điệu),
-// cách viết từng nét và nút lưu vào Sổ tay.
+// phần nhớ chữ (tách chữ, cách nhớ, cụm từ, phân biệt — WordInsight), cách viết từng nét và nút lưu vào Sổ tay.
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { play, stopAll } from '@/lib/audio';
 import { hskLabel, pinyinChunks, toneOf } from '@/lib/text';
 import { useUi } from '@/lib/ui';
 import Stroke from './Stroke';
+import WordInsight, { type Insight } from './WordInsight';
 
 export interface WordLike {
   zh: string;
@@ -37,12 +38,12 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [audioKey, setAudioKey] = useState<string | null>(null);
-  const [info, setInfo] = useState<{ pinyin: string | null; vi: string | null; pos: string | null; hsk2: number | null; hsk3: number | null; example: WordLike['example'] } | null>(null);
+  const [info, setInfo] = useState<({ pinyin: string | null; vi: string | null; pos: string | null; hsk2: number | null; hsk3: number | null; example: WordLike['example'] } & Partial<Insight>) | null>(null);
 
   // Tra từ để biết đã lưu vào Sổ tay chưa (hiện nút Lưu hay Bỏ), có file âm thanh riêng và bổ sung nghĩa/ví dụ còn thiếu.
   useEffect(() => {
     let alive = true;
-    api<{ savedId: number | null; audioKey: string | null; pinyin: string | null; vi: string | null; pos: string | null; hsk2: number | null; hsk3: number | null; example: WordLike['example'] }>(
+    api<{ savedId: number | null; audioKey: string | null; pinyin: string | null; vi: string | null; pos: string | null; hsk2: number | null; hsk3: number | null; example: WordLike['example'] } & Insight>(
       '/words/lookup?zh=' + encodeURIComponent(word.zh),
     )
       .then((r) => {
@@ -132,6 +133,10 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
             Nghe câu ví dụ
           </button>
         </div>
+      ) : null}
+
+      {info?.chars ? (
+        <WordInsight data={{ mnemonic: info.mnemonic ?? null, colloc: info.colloc ?? null, chars: info.chars, compare: info.compare ?? [] }} />
       ) : null}
 
       <Stroke word={word.zh} />

@@ -283,6 +283,8 @@ export interface GrammarListItem {
   category: string;
   title: string;
   pattern: string;
+  /** Biểu tượng tình huống (emoji) của điểm ngữ pháp. */
+  icon: string | null;
   locked: boolean;
   fit: 'review' | 'match' | 'next' | 'far';
   recommended: boolean;
@@ -307,6 +309,8 @@ export interface GrammarDetail {
   compare: string;
   mistake: string;
   examples: { zh: string; pinyin: string; vi: string }[];
+  /** Sơ đồ khối của công thức và biểu tượng cho từng ví dụ (null khi chưa soạn). */
+  visual: { rows: string[]; icons: string[] } | null;
   practice: WritingItem[];
 }
 

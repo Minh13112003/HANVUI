@@ -56,6 +56,7 @@ export class GrammarService {
         category: p.category,
         title: p.title,
         pattern: p.pattern,
+        icon: (p.visual as { icons?: string[] } | null)?.icons?.[0] ?? null,
         locked: p.level > eq,
         // Độ phù hợp với cấp người học: ôn lại (cấp thấp hơn) · đúng cấp · cấp kế (sắp tới) · còn xa.
         fit: p.level < eq ? 'review' : p.level === eq ? 'match' : p.level === eq + 1 ? 'next' : 'far',
@@ -81,6 +82,7 @@ export class GrammarService {
       compare: p.compare,
       mistake: p.mistake,
       examples: p.examples,
+      visual: p.visual,
       practice: await this.writing.forGrammar(userId, p.id),
     };
   }

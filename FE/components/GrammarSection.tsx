@@ -5,6 +5,8 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { play } from '@/lib/audio';
 import type { GrammarDetail, GrammarList, GrammarListItem } from '@/lib/types';
+import GrammarDiagram from './GrammarDiagram';
+import TranslatePractice from './TranslatePractice';
 import { Pinyin } from './WordSheet';
 import WritePractice from './WritePractice';
 
@@ -131,6 +133,7 @@ export default function GrammarSection() {
               <div className="gx-formula han">
                 <Hl text={detail.pattern} keys={keys} />
               </div>
+              {detail.visual?.rows.length ? <GrammarDiagram rows={detail.visual.rows} /> : null}
             </div>
 
             <div className="card stack">
@@ -149,7 +152,12 @@ export default function GrammarSection() {
               <h3 className="gx-h">💬 Ví dụ</h3>
               {detail.examples.map((e, i) => (
                 <div className="sent gx-ex" key={i}>
-                  <div className="row between">
+                  <div className="row between" style={{ gap: 10 }}>
+                    {detail.visual?.icons[i] ? (
+                      <span aria-hidden="true" style={{ fontSize: 34, lineHeight: 1, alignSelf: 'center' }}>
+                        {detail.visual.icons[i]}
+                      </span>
+                    ) : null}
                     <div className="grow">
                       <div className="han" style={{ fontSize: 22 }}>
                         <Hl text={e.zh} keys={keys} />
@@ -174,6 +182,8 @@ export default function GrammarSection() {
                 ✍️ Luyện tập ({detail.practice.length} câu: sắp xếp · điền · chọn · tìm câu sai)
               </button>
             )}
+
+            <TranslatePractice slug={detail.slug} />
           </>
         ) : null}
       </div>
@@ -197,7 +207,7 @@ export default function GrammarSection() {
       </div>
     ) : (
       <button key={p.slug} className="lcard gx-card" data-lv={p.level} data-fit={p.fit} style={{ textAlign: 'left', width: '100%' }} onClick={() => openPoint(p.slug)}>
-        <span className="lg2 han">{p.mastered ? '✓' : '语'}</span>
+        <span className="lg2 han">{p.mastered ? '✓' : (p.icon ?? '语')}</span>
         <span className="grow">
           <b>{p.title}</b>
           <small className="lsub muted han">{p.pattern}</small>

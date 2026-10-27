@@ -1,0 +1,71 @@
+// Hình trực quan cho từng điểm ngữ pháp (soạn 27/10/2026, CHƯA QUA DUYỆT): sơ đồ khối màu của công thức + biểu tượng tình
+// huống cho từng câu ví dụ (cùng thứ tự với `examples`). Không dùng ảnh nên không vướng bản quyền, không tốn dung lượng.
+//
+// Cách viết một hàng sơ đồ: các khối nối bằng " + ", mỗi khối "chữ@vai". Chữ trong ngoặc = có thể bỏ.
+// Vai (màu): s chủ ngữ · v động từ · a tính từ · o tân ngữ/danh từ · t thời gian · p nơi chốn · n số/lượng từ
+//            · q mệnh đề/câu · k từ ngữ pháp chính (tô nổi) · x phần khác
+export interface GrammarVisual {
+  rows: string[];
+  icons: string[];
+}
+
+export const GRAMMAR_VISUAL: Record<string, GrammarVisual> = {
+  'ma-ne': { rows: ['Câu trần thuật@q + 吗？@k', 'A@s + 呢？@k'], icons: ['🎓', '🙂', '🍵'] },
+  shi: { rows: ['A@s + 是@k + B@o', 'A@s + 不是@k + B@o'], icons: ['🎓', '👨‍🏫', '📘'] },
+  you: { rows: ['A@s + 有@k + B@o', 'A@s + 没有@k + B@o'], icons: ['👦', '💸', '📚'] },
+  'bu-mei': { rows: ['不@k + Động từ / Tính từ@v', '没(有)@k + Động từ@v'], icons: ['☕', '🏫', '📏'] },
+  'de-possess': { rows: ['Người/vật@s + 的@k + Danh từ@o'], icons: ['📘', '👩‍🏫', '👩'] },
+  modal: { rows: ['S@s + 想/会/能/可以@k + Động từ@v'], icons: ['🍵', '🗣️', '🪑'] },
+  liangci: { rows: ['Số@n + Lượng từ@k + Danh từ@o', '这/那@x + Lượng từ@k + Danh từ@o'], icons: ['👦', '📚', '🍵'] },
+  le: { rows: ['S@s + Động từ@v + 了@k + (số lượng)@n + Tân ngữ@o', 'Câu@q + 了@k'], icons: ['🍳', '🚶', '❄️'] },
+  guo: { rows: ['S@s + Động từ@v + 过@k + Tân ngữ@o', 'S@s + 没(有)@k + Động từ@v + 过@k'], icons: ['🏯', '🥟', '🎬'] },
+  zai: { rows: ['S@s + (正)在@k + Động từ@v + (呢)@k'], icons: ['📺', '🍚', '📞'] },
+  bi: { rows: ['A@s + 比@k + B@o + Tính từ@a + (一点儿/多了)@x', 'A@s + 没有@k + B@o + Tính từ@a'], icons: ['📏', '🥶', '💰'] },
+  'de-complement': { rows: ['S@s + Động từ@v + 得@k + (很)@x + Tính từ@a', 'S@s + Tân ngữ@o + Động từ@v + 得@k + Tính từ@a'], icons: ['🏃', '🗣️', '✍️'] },
+  yinwei: { rows: ['因为@k + Nguyên nhân@q + ，所以@k + Kết quả@q', '虽然@k + A@q + ，但是@k + B@q'], icons: ['🌧️', '😊', '🤒'] },
+  xiwang: { rows: ['S@s + 希望@k + (người khác)@o + Việc mong muốn@q'], icons: ['☀️', '💊', '🩺'] },
+  yibian: { rows: ['S@s + 一边@k + Động từ 1@v + 一边@k + Động từ 2@v'], icons: ['🍜', '🎧', '🎤'] },
+  shuo: { rows: ['A@s + 说@k + Nội dung@q', 'A@s + 告诉@k + B@o + Nội dung@q', 'A@s + 问@k + B@o + Câu hỏi@q'], icons: ['💬', '🏠', '❓'] },
+  ruguo: { rows: ['如果/要是@k + Điều kiện@q + ，(S)@s + 就@k + Kết quả@q'], icons: ['🌧️', '🏡', '🛌'] },
+  'de-relative': { rows: ['Mệnh đề@q + 的@k + Danh từ@o'], icons: ['📖', '🥛', '👩‍🏫'] },
+  bei: { rows: ['A (bị tác động)@s + 被@k + B (gây ra)@o + Động từ@v + Kết quả@x'], icons: ['📱', '💥', '🧑‍🏫'] },
+  ba: { rows: ['S@s + 把@k + Tân ngữ@o + Động từ@v + Kết quả@x'], icons: ['🚪', '📝', '📚'] },
+  'yaoshi-jiuhao': { rows: ['要是@k + Điều ước@q + 就好了@k', '如果我是…@k + ，我就@k + …@q'], icons: ['🕊️', '🌤️', '🤔'] },
+  chule: { rows: ['除了@k + A@o + (以外)@x + ，还@k + B@q', '除了@k + A@o + (以外)@x + ，都@k + B@q'], icons: ['🌐', '👥', '📜'] },
+  yuelaiyue: { rows: ['越来越@k + Tính từ@a', '越@k + A@v + 越@k + B@a'], icons: ['🥶', '📈', '⚡'] },
+  'shi-de': { rows: ['S@s + 是@k + Thời gian / Nơi chốn / Cách thức@t + Động từ@v + 的@k'], icons: ['📅', '🚆', '🏫'] },
+  'wh-words': { rows: ['S@s + Động từ@v + 什么/谁/几…@k'], icons: ['🍽️', '🧑', '👨‍👩‍👧'] },
+  'zai-place': { rows: ['S@s + 在@k + Nơi chốn@p', 'S@s + 在@k + Nơi chốn@p + Động từ@v'], icons: ['🏠', '🏫', '🛒'] },
+  'time-order': { rows: ['S@s + Thời gian@t + Động từ@v', 'Thời gian@t + S@s + Động từ@v'], icons: ['🏫', '⏰', '📅'] },
+  'hen-adj': { rows: ['S@s + 很/太/非常@k + Tính từ@a'], icons: ['🔥', '💸', '💃'] },
+  'ye-dou': { rows: ['S@s + 也/都@k + Động từ@v', 'S@s + 也/都@k + 不@k + Động từ@v'], icons: ['🎓', '🍵', '🙅'] },
+  'ba-particle': { rows: ['Câu@q + 吧@k'], icons: ['🚶', '🤔', '🍵'] },
+  'cong-dao': { rows: ['从@k + A@t + 到@k + B@t'], icons: ['🕗', '🏫', '📆'] },
+  li: { rows: ['A@p + 离@k + B@p + (很)近/远@a', '离@k + Mốc@t + 还有@x + Khoảng cách@n'], icons: ['🏫', '🏦', '📝'] },
+  'gen-yiqi': { rows: ['S@s + 跟/和@k + Người@o + 一起@k + Động từ@v'], icons: ['🍲', '🛍️', '🤝'] },
+  yijing: { rows: ['S@s + 已经@k + Động từ@v + 了@k', 'S@s + 还没(有)@k + Động từ@v + (呢)@k'], icons: ['🍚', '👋', '⏳'] },
+  gei: { rows: ['S@s + 给@k + Người@o + Động từ@v', 'S@s + Động từ@v + 给@k + Người@o'], icons: ['📞', '🎁', '🍳'] },
+  yinggai: { rows: ['S@s + 应该/要/得@k + Động từ@v', 'S@s + 不用/别@k + Động từ@v'], icons: ['💧', '🏃', '🙅'] },
+  yixia: { rows: ['Động từ@v + 一下@k', 'Động từ@v + Số@n + 次@k'], icons: ['⏳', '✈️', '👀'] },
+  zhe: { rows: ['Động từ@v + 着@k', 'S@s + Động từ 1@v + 着@k + Động từ 2@v'], icons: ['🚪', '📖', '🖼️'] },
+  'huo-haishi': { rows: ['A@o + 还是@k + B@o + ？@x', 'A@o + 或者@k + B@o'], icons: ['☕', '🍵', '🚆'] },
+  'yi-jiu': { rows: ['S@s + 一@k + Động từ 1@v + 就@k + Động từ 2@v'], icons: ['🏠', '💡', '🌙'] },
+  budan: { rows: ['S@s + 不但@k + A@q + ，而且@k + B@q'], icons: ['✍️', '🍜', '🌟'] },
+  shihou: { rows: ['Việc A@q + 的时候@k + ，Việc B@q', 'Việc A@q + 以前/以后@k + ，Việc B@q'], icons: ['🍚', '📖', '🍜'] },
+  jieguo: { rows: ['Động từ@v + 完/到/见/懂/好/错@k'], icons: ['📝', '👂', '📱'] },
+  youdian: { rows: ['有点儿@k + Tính từ@a', 'Tính từ@a + 一点儿@k'], icons: ['👕', '💰', '😮‍💨'] },
+  rang: { rows: ['S@s + 让/叫/请@k + Người@o + Động từ@v'], icons: ['🛌', '🪑', '🤫'] },
+  'jiu-cai': { rows: ['S@s + Thời gian@t + 就@k + Động từ@v (sớm/nhanh)', 'S@s + Thời gian@t + 才@k + Động từ@v (muộn/chậm)'], icons: ['⏰', '🐢', '✍️'] },
+  tingshuo: { rows: ['听说@k + Tin nghe được@q'], icons: ['👂', '🍲', '✈️'] },
+  'de-nominal': { rows: ['Động từ/Tính từ/Danh từ@x + 的@k + (bỏ danh từ)@o'], icons: ['📘', '🍎', '🔴'] },
+  zhiyao: { rows: ['只要@k + Điều kiện@q + ，就@k + Kết quả@q'], icons: ['💪', '🥳', '🗓️'] },
+  zhiyou: { rows: ['只有@k + Điều kiện duy nhất@q + ，才@k + Kết quả@q'], icons: ['📚', '😊', '🎓'] },
+  jishi: { rows: ['即使/哪怕@k + Giả thiết@q + ，也@k + Kết quả không đổi@q'], icons: ['☔', '😤', '😄'] },
+  jiran: { rows: ['既然@k + Sự thật@q + ，就@k + Đề nghị@q'], icons: ['😴', '🏡', '🛍️'] },
+  wulun: { rows: ['无论/不管@k + Từ để hỏi / A还是B@q + ，都@k + Kết quả@q'], icons: ['🤗', '⏱️', '🌦️'] },
+  lian: { rows: ['连@k + A@o + 都/也@k + (不/没)@x + Vị ngữ@v'], icons: ['👶', '🍚', '🔤'] },
+  'keneng-buyu': { rows: ['Động từ@v + 得@k + Kết quả@a (làm được)', 'Động từ@v + 不@k + Kết quả@a (không làm được)'], icons: ['👂', '🍱', '👀'] },
+  duilaishuo: { rows: ['对@k + Người@o + 来说@k + ，Nhận xét@q', '对于/关于@k + Chủ đề@o + ，…@q'], icons: ['📕', '💭', '🏯'] },
+  yaobushi: { rows: ['要不是@k + Sự thật@q + ，(S)就@k + Hậu quả giả định@q'], icons: ['⏰', '⛰️', '🧳'] },
+  yuqi: { rows: ['与其@k + A@q + ，不如@k + B (tốt hơn)@q', '宁可@k + A@q + ，也不@k + B@q'], icons: ['🚶', '🙅', '🏃'] },
+};
