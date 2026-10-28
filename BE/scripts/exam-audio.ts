@@ -16,7 +16,8 @@ import type { StoredSection } from '../src/exam/exam.service.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { PAUSE_MS, PROVIDER, hashOf as hashWith, synth } from './lib/tts.js';
 
-const VOICE: Record<string, string> = { A: 'zh-CN-XiaoxiaoNeural', B: 'zh-CN-YunyangNeural' };
+// A nữ, B nam, N người dẫn đọc câu hỏi "问：…" ở cuối câu nghe (như đề thật).
+const VOICE: Record<string, string> = { A: 'zh-CN-XiaoxiaoNeural', B: 'zh-CN-YunyangNeural', N: 'zh-CN-YunxiNeural' };
 
 const env = (k: string) => {
   const v = process.env[k]?.trim();

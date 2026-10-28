@@ -201,11 +201,17 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
     it('đề gửi cho người học không lộ đáp án', async () => {
       const r = await request(http()).post('/api/v1/exams/start').set(u.auth).send({ level: 1 }).expect(200);
       expect(JSON.stringify(r.body)).not.toContain('"answer"');
-      expect(r.body.exam.sections.map((s: { kind: string }) => s.kind)).toEqual(['listening', 'reading', 'writing']);
-      expect(r.body.exam.pointsPerQuestion).toBe(10);
-      // chưa có âm thanh thì kèm lời thoại để FE tạm đọc
+      // HSK 1 như đề thật: nghe 20 + đọc 20, mỗi phần 100 điểm (5 điểm một câu)
+      expect(r.body.exam.sections.map((s: { kind: string }) => s.kind)).toEqual(['listening', 'reading']);
+      expect(r.body.exam.sections.map((s: { questions: unknown[] }) => s.questions.length)).toEqual([20, 20]);
+      expect(r.body.exam.sections[0]).toMatchObject({ max: 100, pointsPerQuestion: 5 });
+      expect(r.body.exam.sections[0].parts.map((p: { count: number }) => p.count)).toEqual([5, 5, 5, 5]);
+      // chưa có âm thanh thì kèm lời thoại để FE tạm đọc; đề HSK 1 có pinyin
       const q = r.body.exam.sections[0].questions[0];
       expect(q.audio !== null || Array.isArray(q.script)).toBe(true);
+      expect(r.body.exam.sections[1].questions.some((x: { py?: object }) => x.py)).toBe(true);
+      // câu nghe không in câu hỏi (người dẫn đọc "问：…" ở cuối đoạn như đề thật)
+      expect(r.body.exam.sections[0].questions.every((x: { prompt?: string }) => !x.prompt)).toBe(true);
     });
 
     it('nộp toàn sai: 0 điểm, không lên cấp', async () => {
@@ -217,8 +223,10 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
     it('làm đúng hết: 200 điểm, đạt và lên cấp; thi lại cấp cũ không lên nữa', async () => {
       const answerKey = async (examId: string) => {
         const exam = await prisma.exam.findUniqueOrThrow({ where: { id: examId } });
-        const out: Record<string, number | string[]> = {};
-        (exam.sections as unknown as StoredSection[]).forEach((s) => s.questions.forEach((q) => (out[q.id] = q.type === 'order' ? [(q.answer as string[])[0]] : (q.answer as number))));
+        const out: Record<string, number | string | string[]> = {};
+        (exam.sections as unknown as StoredSection[]).forEach((s) =>
+          s.questions.forEach((q) => (out[q.id] = q.type === 'order' ? [(q.answer as string[])[0]] : q.type === 'fill' ? (q.answer as string[])[0] : (q.answer as number))),
+        );
         return out;
       };
       const s = await request(http()).post('/api/v1/exams/start').set(u.auth).send({ level: 1 }).expect(200);
@@ -228,7 +236,7 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
         .set(u.auth)
         .send({ answers: await answerKey(att.examId) })
         .expect(200);
-      expect(r.body).toMatchObject({ score: 200, passed: true, leveledUp: true, newLevel: 2, correct: 20, total: 20 });
+      expect(r.body).toMatchObject({ score: 200, passed: true, leveledUp: true, newLevel: 2, correct: 40, total: 40 });
       await request(http()).post(`/api/v1/exams/attempts/${s.body.attemptId}/submit`).set(u.auth).send({ answers: {} }).expect(400); // đã nộp
 
       const me = await request(http()).get('/api/v1/auth/me').set(u.auth).expect(200);
@@ -249,16 +257,24 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(review.body.sections[0].questions[0]).toHaveProperty('answer');
     });
 
-    it('câu sắp xếp chấp nhận nhiều cách đúng, bỏ qua dấu cách', async () => {
-      const exam = await prisma.exam.findUniqueOrThrow({ where: { id: 'hsk2-l1-1' } });
-      const q = (exam.sections as unknown as StoredSection[])[2].questions.find((x) => (x.answer as string[]).length > 1)!;
+    it('câu sắp xếp nhận nhiều cách đúng, câu điền chữ chấm đúng chữ; điểm tính theo từng phần', async () => {
+      const exam = await prisma.exam.findUniqueOrThrow({ where: { id: 'hsk2-l3-2' } });
+      const writing = (exam.sections as unknown as StoredSection[])[2].questions;
+      const q = writing.find((x) => x.type === 'order' && (x.answer as string[]).length > 1)!;
+      const f = writing.find((x) => x.type === 'fill')!;
       const alt = (q.answer as string[])[1];
-      const s = await request(http()).post('/api/v1/exams/start').set(u.auth).send({ level: 1 }).expect(200);
-      const att = await prisma.examAttempt.findUniqueOrThrow({ where: { id: s.body.attemptId } });
+      const s = await request(http()).post('/api/v1/exams/start').set(u.auth).send({ level: 3 }).expect(200);
       // ép đúng đề cần thử
-      await prisma.examAttempt.update({ where: { id: att.id }, data: { examId: 'hsk2-l1-1' } });
-      const r = await request(http()).post(`/api/v1/exams/attempts/${att.id}/submit`).set(u.auth).send({ answers: { [q.id]: Array.from(alt).join(' ') } }).expect(200);
-      expect(r.body.correct).toBe(1);
+      await prisma.examAttempt.update({ where: { id: s.body.attemptId }, data: { examId: 'hsk2-l3-2' } });
+      const r = await request(http())
+        .post(`/api/v1/exams/attempts/${s.body.attemptId}/submit`)
+        .set(u.auth)
+        .send({ answers: { [q.id]: Array.from(alt).join(' '), [f.id]: ` ${(f.answer as string[])[0]} ` } })
+        .expect(200);
+      expect(r.body.correct).toBe(2);
+      // phần viết 10 câu = 100 điểm → 2 câu đúng = 20 điểm
+      expect(r.body.sections[2]).toMatchObject({ correct: 2, score: 20, max: 100 });
+      expect(r.body.score).toBe(20);
     });
 
     it('nộp quá giờ thì không tính', async () => {
@@ -333,14 +349,13 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(typeof map.body).toBe('object');
     });
 
-    it('có 4 đề HSK 3 (24 câu, 300 điểm, đạt 180) và bài HSK 3 khóa với người HSK 1', async () => {
+    it('có 3 đề HSK 3 (80 câu, 300 điểm, đạt 180) và bài HSK 3 khóa với người HSK 1', async () => {
       const u = S;
       const ex = await request(http()).get('/api/v1/exams').set(u.auth).expect(200);
       const l3 = ex.body.levels.find((l: { level: number }) => l.level === 3);
-      expect(l3).toMatchObject({ exams: 4, maxScore: 300, passScore: 180, durationMin: 90 });
+      expect(l3).toMatchObject({ exams: 3, maxScore: 300, passScore: 180, durationMin: 90 });
       const st = await request(http()).post('/api/v1/exams/start').set(u.auth).send({ level: 3 }).expect(200);
-      const total = st.body.exam.sections.reduce((n: number, s2: { questions: unknown[] }) => n + s2.questions.length, 0);
-      expect(total).toBe(24);
+      expect(st.body.exam.sections.map((s2: { questions: unknown[] }) => s2.questions.length)).toEqual([40, 30, 10]);
       expect(JSON.stringify(st.body)).not.toContain('"answer"');
       await request(http()).get('/api/v1/lessons/study-score').set(u.auth).expect(403);
       await request(http()).get('/api/v1/lessons/doc3-chunjie').set(u.auth).expect(403);

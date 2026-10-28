@@ -9,22 +9,52 @@ export interface Say {
   who: string;
   zh: string;
 }
+/**
+ * Dạng câu theo đề HSK 2.0 thật:
+ * - judge: đúng/sai (với hình `pic`, hoặc với câu ★ `statement`)
+ * - choice: chọn 1 trong `options` (chữ, hoặc hình khi `pics`)
+ * - match: chọn 1 trong ngân hàng A–F dùng chung của phần (`StoredPart.bank`)
+ * - order: sắp xếp từ thành câu; fill: điền chữ Hán theo `pinyin`
+ */
 export interface StoredQuestion {
   id: string;
-  type: 'judge' | 'choice' | 'order';
+  type: 'judge' | 'choice' | 'match' | 'order' | 'fill';
   script?: Say[];
   /** Âm thanh đã tạo cho từng câu thoại của câu nghe, theo thứ tự. */
   audio?: { who: string; key: string }[];
+  /** Hình (emoji) đi kèm câu. */
+  pic?: string;
+  /** Câu/đoạn văn cho đọc (câu cần ghép, câu có chỗ trống, đoạn văn). */
+  text?: string;
   statement?: string;
   prompt?: string;
   options?: string[];
+  /** Các lựa chọn là hình (emoji). */
+  pics?: boolean;
   words?: string[];
-  /** judge/choice: chỉ số đáp án; order: các cách sắp xếp đúng. */
+  /** fill: pinyin của chữ cần điền. */
+  pinyin?: string;
+  /** Pinyin của các chuỗi chữ Hán hiển thị (đề HSK 1-2 in pinyin như đề thật). */
+  py?: Record<string, string>;
+  /** judge/choice/match: chỉ số đáp án; order/fill: các đáp án đúng. */
   answer: number | string[];
+}
+export interface StoredPart {
+  title: string;
+  guide: string;
+  /** Số câu của phần (các câu nằm liên tiếp trong `questions`). */
+  count: number;
+  /** Ngân hàng lựa chọn A–F dùng chung cho câu `match`. */
+  bank?: string[];
+  pics?: boolean;
+  bankPy?: string[];
 }
 export interface StoredSection {
   name: string;
   kind: 'listening' | 'reading' | 'writing';
+  /** Điểm tối đa của phần (đề thật: mỗi phần 100 điểm). Không có thì chia đều tổng điểm theo số câu. */
+  max?: number;
+  parts?: StoredPart[];
   questions: StoredQuestion[];
 }
 
@@ -41,6 +71,12 @@ const shuffle = <T>(a: T[]): T[] => {
 };
 /** Bỏ khoảng trắng và dấu câu để so sánh câu sắp xếp. */
 const norm = (s: string) => s.replace(/[\s，。？！、,.?!]/g, '');
+
+/** Điểm mỗi câu của từng phần: theo `max` của phần, hoặc chia đều tổng điểm. */
+export const sectionPoints = (sections: StoredSection[], maxScore: number): number[] => {
+  const total = sections.reduce((n, s) => n + s.questions.length, 0);
+  return sections.map((s) => (s.max && s.questions.length ? s.max / s.questions.length : maxScore / total));
+};
 
 type Answer = number | string | string[] | null | undefined;
 
@@ -97,7 +133,7 @@ export class ExamService {
 
     const attempt = await this.prisma.examAttempt.create({ data: { userId, examId: exam.id } });
     const sections = exam.sections as unknown as StoredSection[];
-    const total = sections.reduce((n, s) => n + s.questions.length, 0);
+    const points = sectionPoints(sections, exam.maxScore);
     return {
       attemptId: attempt.id,
       startedAt: attempt.startedAt,
@@ -109,8 +145,14 @@ export class ExamService {
         durationMin: exam.durationMin,
         maxScore: exam.maxScore,
         passScore: exam.passScore,
-        pointsPerQuestion: exam.maxScore / total,
-        sections: sections.map((s) => ({ name: s.name, kind: s.kind, questions: s.questions.map((q) => this.publicQuestion(q)) })),
+        sections: sections.map((s, i) => ({
+          name: s.name,
+          kind: s.kind,
+          max: Math.round(points[i] * s.questions.length),
+          pointsPerQuestion: points[i],
+          parts: s.parts ?? [{ title: '', guide: '', count: s.questions.length }],
+          questions: s.questions.map((q) => this.publicQuestion(q)),
+        })),
       },
     };
   }
@@ -131,17 +173,28 @@ export class ExamService {
 
     const sections = exam.sections as unknown as StoredSection[];
     const total = sections.reduce((n, s) => n + s.questions.length, 0);
-    const per = exam.maxScore / total;
+    const points = sectionPoints(sections, exam.maxScore);
     let correct = 0;
-    const detail = sections.map((s) => {
+    let raw = 0;
+    const detail = sections.map((s, i) => {
       const items = s.questions.map((q) => {
         const ok = this.isCorrect(q, answers[q.id]);
         if (ok) correct++;
-        return { id: q.id, correct: ok, answer: q.type === 'order' ? (q.answer as string[])[0] : q.answer };
+        return { id: q.id, correct: ok, answer: Array.isArray(q.answer) ? q.answer[0] : q.answer };
       });
-      return { name: s.name, kind: s.kind, correct: items.filter((i) => i.correct).length, total: items.length, items };
+      const right = items.filter((x) => x.correct).length;
+      raw += right * points[i];
+      return {
+        name: s.name,
+        kind: s.kind,
+        correct: right,
+        total: items.length,
+        score: Math.round(right * points[i]),
+        max: Math.round(items.length * points[i]),
+        items,
+      };
     });
-    const score = Math.round(correct * per);
+    const score = Math.round(raw);
     const passed = score >= exam.passScore;
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
@@ -208,17 +261,27 @@ export class ExamService {
 
   // ───────────── Nội bộ ─────────────
 
-  /** Bỏ đáp án; với câu nghe chỉ gửi lời thoại khi chưa có âm thanh (để FE tạm đọc bằng giọng trình duyệt). */
+  /**
+   * Bỏ đáp án. Câu nghe: không gửi câu hỏi (người dẫn đọc ở cuối đoạn như đề thật); chỉ gửi lời thoại khi chưa có đủ
+   * âm thanh (để FE tạm đọc bằng giọng trình duyệt).
+   */
   private publicQuestion(q: StoredQuestion) {
+    const listening = Boolean(q.script?.length);
+    const fullAudio = Boolean(q.audio?.length && q.audio.length === (q.script?.length ?? 0));
     return {
       id: q.id,
       type: q.type,
+      pic: q.pic,
+      text: q.text,
       statement: q.statement,
-      prompt: q.prompt,
+      prompt: listening ? undefined : q.prompt,
       options: q.options,
+      pics: q.pics,
+      pinyin: q.pinyin,
+      py: q.py,
       words: q.type === 'order' ? shuffle(q.words ?? []) : undefined,
-      audio: q.audio?.length ? q.audio : null,
-      script: q.script && !q.audio?.length ? q.script : undefined,
+      audio: fullAudio ? q.audio : null,
+      script: listening && !fullAudio ? q.script : undefined,
     };
   }
 
@@ -227,6 +290,10 @@ export class ExamService {
     if (q.type === 'order') {
       const given = norm(Array.isArray(a) ? a.join('') : String(a));
       return (q.answer as string[]).some((x) => norm(x) === given);
+    }
+    if (q.type === 'fill') {
+      const given = norm(String(a));
+      return given.length > 0 && (q.answer as string[]).some((x) => norm(x) === given);
     }
     return typeof a === 'number' && a === q.answer;
   }

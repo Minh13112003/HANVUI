@@ -14,10 +14,11 @@ import type { MailCounts } from '@/lib/types';
 type Theme = 'auto' | 'light' | 'dark';
 type Palette = 'jade' | 'sky';
 
-/** Màu chủ đề (theme-sky.css). Ô xem trước vẽ bằng màu cố định của từng chủ đề. */
-const PALETTES: { id: Palette; name: string; note: string; sw: [string, string, string] }[] = [
-  { id: 'jade', name: 'Ngọc bích', note: 'Mặc định', sw: ['#103C36', '#0E7466', '#EEF2F0'] },
-  { id: 'sky', name: 'Trời – Biển', note: 'Xanh da trời', sw: ['#0B2E52', '#0369A1', '#EAF3FA'] },
+/** Màu chủ đề (theme-sky.css). Sáng / tối chọn riêng ở ô bên dưới: Trời – Biển sáng = xanh dương, tối = xanh đậm.
+ *  Ô xem trước chia đôi: nửa trái bản sáng, nửa phải bản tối (nền + dòng chữ mẫu đúng màu chữ). */
+const PALETTES: { id: Palette; name: string; note: string; light: [string, string]; dark: [string, string] }[] = [
+  { id: 'jade', name: 'Ngọc bích', note: 'Mặc định', light: ['#EEF2F0', '#15211F'], dark: ['#0D1614', '#E6EFEC'] },
+  { id: 'sky', name: 'Trời – Biển', note: 'Sáng: xanh dương · Tối: xanh đậm', light: ['#CDE5FA', '#0A3557'], dark: ['#0A1F3D', '#D9EDFF'] },
 ];
 
 /** Quy đổi gần đúng HSK 3.0 → 2.0 (xem BE/src/common/hsk.ts). */
@@ -63,7 +64,11 @@ export default function MorePage() {
 
   const applyTheme = (t: Theme) => {
     setTheme(t);
-    localStorage.setItem('hv.theme', t);
+    try {
+      localStorage.setItem('hv.theme', t);
+    } catch {
+      /* vẫn đổi được trong phiên này */
+    }
     if (t === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', t);
   };
@@ -250,13 +255,15 @@ export default function MorePage() {
                     minWidth: 0,
                   }}
                 >
-                  <span aria-hidden="true" style={{ display: 'flex', height: 34, borderRadius: 10, overflow: 'hidden' }}>
-                    {p.sw.map((c) => (
-                      <i key={c} style={{ flex: 1, background: c }} />
+                  <span aria-hidden="true" style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+                    {[p.light, p.dark].map(([bg, fg], k) => (
+                      <span key={k} style={{ flex: 1, padding: '10px 8px', background: bg, color: fg, fontSize: 12, fontWeight: 700 }}>
+                        {k ? 'Tối' : 'Sáng'}
+                      </span>
                     ))}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <b style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</b>
+                    <b style={{ fontSize: 14 }}>{p.name}</b>
                     {on ? <span style={{ color: 'var(--accent)', fontWeight: 800 }}>✓</span> : null}
                   </span>
                   <small className="muted">{p.note}</small>
@@ -265,7 +272,7 @@ export default function MorePage() {
             })}
           </div>
           <label className="field">
-            Sáng / tối
+            Sáng / tối{palette === 'sky' ? ' (Trời – Biển: sáng = xanh dương, tối = xanh đậm)' : ''}
             <select value={theme} onChange={(e) => applyTheme(e.target.value as Theme)}>
               <option value="auto">Theo máy</option>
               <option value="light">Sáng</option>

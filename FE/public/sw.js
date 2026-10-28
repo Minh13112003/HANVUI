@@ -1,6 +1,6 @@
 // Service worker đơn giản: giữ vỏ app để mở được khi mạng yếu, và lưu lại âm thanh, dữ liệu nét chữ.
 // KHÔNG bao giờ lưu kết quả API (/api/v1): lượt, điểm, nhiệm vụ phải lấy từ máy chủ.
-const SHELL = 'hanvui-shell-v1';
+const SHELL = 'hanvui-shell-v2'; // đổi số để xóa bộ nhớ cũ trên máy người dùng
 const MEDIA = 'hanvui-media-v1';
 const KEEP = [SHELL, MEDIA];
 
@@ -41,18 +41,18 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // File của app: lấy bản MỚI từ mạng trước, chỉ dùng bản đã lưu khi mất mạng.
+  // (Trước đây ưu tiên bản đã lưu nên sau khi cập nhật, máy có thể vẫn hiện giao diện cũ.)
   if (url.origin === self.location.origin) {
     e.respondWith(
-      caches.open(SHELL).then(async (c) => {
-        const hit = await c.match(req);
-        const net = fetch(req)
+      caches.open(SHELL).then((c) =>
+        fetch(req)
           .then((res) => {
             if (res.ok) c.put(req, res.clone());
             return res;
           })
-          .catch(() => hit ?? Response.error());
-        return hit ?? net;
-      }),
+          .catch(() => c.match(req).then((hit) => hit ?? Response.error())),
+      ),
     );
   }
 });
