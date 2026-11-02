@@ -8,6 +8,8 @@ import { loadEnv } from '../src/config/env.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 // Cần database thật đã seed (pnpm db:seed). Tài khoản thử xóa ở cuối.
+process.env.EVENT_PINNED_MONTH = '2026-10';
+
 describe.skipIf(!process.env.DATABASE_URL)('Nội dung và sự kiện (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;

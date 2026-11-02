@@ -43,7 +43,11 @@
     "audit:vocab": "tsx scripts/audit-vocab.ts",
     "db:seed:exams": "tsx prisma/seed/seed-exams.ts",
     "audio:exams": "tsx scripts/exam-audio.ts",
-    "audio:words": "tsx scripts/word-audio.ts"
+    "audio:words": "tsx scripts/word-audio.ts",
+    "admin:grant": "tsx scripts/admin-grant.ts"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",
@@ -61,6 +65,7 @@
     "dotenv": "^18.0.8",
     "helmet": "^8.3.0",
     "pg": "^8.23.1",
+    "pinyin-pro": "^3.29.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.35.5"
@@ -78,7 +83,6 @@
     "@vitest/coverage-v8": "^4.1.2",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "pinyin-pro": "^3.29.5",
     "prettier": "^3.4.2",
     "prisma": "7.10.0",
     "source-map-support": "^0.5.21",

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, vnDay, type VnDay } from '../common/time.js';
+import { Clock } from '../common/time.js';
 import { demo } from '../config/demo.js';
+import { eventDay, type EventDay } from './event-day.js';
 import type { TokenKind } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -40,15 +41,12 @@ export class MissionService {
    */
   async checkin(userId: string) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { eventOptOut: true } });
     const bit = 1 << (day.day - 1);
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`
-        INSERT INTO "UserEvent" ("userId","month","joinDay","lastLoginDay","createdAt","updatedAt")
-        VALUES (${userId}::uuid, ${day.monthKey}, ${day.day}, 0, now(), now())
-        ON CONFLICT ("userId","month") DO NOTHING`;
+      await this.ensureRow(tx, userId, day);
       await tx.$queryRaw`SELECT 1 FROM "UserEvent" WHERE "userId"=${userId}::uuid AND "month"=${day.monthKey} FOR UPDATE`;
       const ev = await tx.userEvent.findUniqueOrThrow({ where: { userId_month: { userId, month: day.monthKey } } });
       if (ev.lastLoginDay === day.day) return { granted: 0, alreadyCheckedIn: true };
@@ -104,7 +102,7 @@ export class MissionService {
   /** Báo đang thao tác. Cộng thời gian online (tối đa 2 phút giữa hai lần báo) và nhận thưởng online. */
   async ping(userId: string) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { eventOptOut: true } });
     return this.prisma.$transaction(async (tx) => {
       const m = await tx.userMission.upsert({
@@ -141,7 +139,7 @@ export class MissionService {
   /** Một bài nghe, trả lời hết câu hỏi (đã lọc nghe đủ 80%). 2 bài khác nhau trong ngày: +2 lượt. */
   async onLessonCompleted(userId: string, lessonId: string) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { eventOptOut: true } });
     return this.prisma.$transaction(async (tx) => {
       const m = await tx.userMission.upsert({
@@ -182,7 +180,7 @@ export class MissionService {
 
   /** Tiến độ nhiệm vụ ngày hôm nay, cho thẻ "Nhiệm vụ hôm nay" ở trang chủ. */
   async today(userId: string) {
-    const day = vnDay(this.clock.now());
+    const day = eventDay(this.clock.now());
     const m = await this.prisma.userMission.findUnique({ where: { userId_day: { userId, day: day.key } } });
     const claimed = m?.claimed ?? 0;
     const bits = {
@@ -210,7 +208,7 @@ export class MissionService {
   async grantTokens(userId: string, n: number, kind: TokenKind, reason: string, tx?: Tx) {
     if (n <= 0) return;
     const run = async (t: Tx) => {
-      const day = vnDay(this.clock.now());
+      const day = eventDay(this.clock.now());
       await this.ensureRow(t, userId, day);
       await this.addTokens(t, userId, day.monthKey, n);
       await t.tokenLedger.create({ data: { userId, month: day.monthKey, delta: n, kind, reason } });
@@ -230,11 +228,17 @@ export class MissionService {
     return n;
   }
 
-  private async ensureRow(tx: Tx, userId: string, day: VnDay) {
+  /** Tạo hàng sự kiện nếu chưa có. Truyện được giữ sang tháng mới: lượt, điểm, từ đã giải còn nguyên, phần đếm nhiệm vụ làm lại từ đầu. */
+  private async ensureRow(tx: Tx, userId: string, day: EventDay) {
     await tx.$executeRaw`
-      INSERT INTO "UserEvent" ("userId","month","joinDay","lastLoginDay","createdAt","updatedAt")
-      VALUES (${userId}::uuid, ${day.monthKey}, ${day.day}, 0, now(), now())
+      INSERT INTO "UserEvent" ("userId","month","cycle","joinDay","lastLoginDay","createdAt","updatedAt")
+      VALUES (${userId}::uuid, ${day.monthKey}, ${day.cycle}, ${day.day}, 0, now(), now())
       ON CONFLICT ("userId","month") DO NOTHING`;
+    const zero = [0, 0, 0, 0];
+    await tx.userEvent.updateMany({
+      where: { userId, month: day.monthKey, cycle: { not: day.cycle } },
+      data: { cycle: day.cycle, loginBits: 0, lastLoginDay: 0, weekLessons: zero, weekOnlineSec: zero, weekClaimed: zero },
+    });
   }
 
   private addTokens(tx: Tx, userId: string, month: string, n: number) {
@@ -242,7 +246,7 @@ export class MissionService {
   }
 
   /** Nhận các mốc nhiệm vụ tuần mới đạt. Ngày dự trữ không có tuần 5: tiến độ tuần 4 giữ nguyên. */
-  private async claimWeekly(tx: Tx, userId: string, day: VnDay, enabled: boolean) {
+  private async claimWeekly(tx: Tx, userId: string, day: EventDay, enabled: boolean) {
     if (!enabled) return 0;
     const ev = await tx.userEvent.findUnique({ where: { userId_month: { userId, month: day.monthKey } } });
     if (!ev) return 0;

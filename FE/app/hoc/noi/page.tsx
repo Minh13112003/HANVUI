@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Shell from '@/components/Shell';
 import SkillNav from '@/components/SkillNav';
+import PronCheck from '@/components/PronCheck';
 import SpeechCheck from '@/components/SpeechCheck';
 import { Pinyin } from '@/components/WordSheet';
 import { api } from '@/lib/api';
@@ -131,6 +132,7 @@ export default function SpeakPage() {
                 Đọc câu mẫu
               </button>
             </div>
+            <PronCheck target={readWhat === 'sentence' && w.example ? w.example.zh : w.zh} />
             <SpeechCheck target={readWhat === 'sentence' && w.example ? w.example.zh : w.zh} />
 
             <button className={'mic' + (rec ? ' rec' : '')} onClick={rec ? stop : start}>

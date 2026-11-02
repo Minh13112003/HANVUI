@@ -187,6 +187,7 @@ export interface EventState {
   story?: { id: string; title: string; titleZh: string | null; month: string };
   day?: number;
   daysInMonth?: number;
+  extended?: boolean;
   reserveDay?: boolean;
   optedOut?: boolean;
   tokens?: number;

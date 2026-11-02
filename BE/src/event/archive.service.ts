@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { hasHan, isChineseAnswer, pinyinKey } from '../common/text.js';
-import { Clock, vnDay } from '../common/time.js';
+import { Clock } from '../common/time.js';
+import { eventDay } from './event-day.js';
 import { hintLessonOf, pickHintLesson, slotLessons } from './hint-lesson.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ByGroup } from './event.service.js';
@@ -22,7 +23,7 @@ export class ArchiveService {
   ) {}
 
   private currentMonth() {
-    return vnDay(this.clock.now()).monthKey;
+    return eventDay(this.clock.now()).monthKey;
   }
 
   /** Các sự kiện đã kết thúc, kèm tiến độ sưu tập "đã khám phá X/Y từ khóa". */

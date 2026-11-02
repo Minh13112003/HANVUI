@@ -58,7 +58,7 @@ export default function EventPage() {
             谜
           </span>
           <div className="row between">
-            <span className="eyebrow">Tháng {ev.story?.month} · ngày {ev.day}/{ev.daysInMonth}</span>
+            <span className="eyebrow">{ev.extended ? 'Sự kiện đang mở' : `Tháng ${ev.story?.month} · ngày ${ev.day}/${ev.daysInMonth}`}</span>
             <span className="hpill">{ev.tokens} lượt</span>
           </div>
           <div className="evt">

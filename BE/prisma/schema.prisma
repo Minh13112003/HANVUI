@@ -92,6 +92,7 @@ model User {
   slots         UserSlot[]
   events        UserEvent[]
   missions      UserMission[]
+  speakUsage    SpeakUsage[]
   ledger        TokenLedger[]
   redeemUses    RedeemUse[]
   items         InventoryItem[]
@@ -185,6 +186,7 @@ model Lesson {
   hskShown  Int? // cấp HSK 2.0 hiển thị: bằng `level`, chỉ cao hơn khi hơn 70% từ của bài thuộc cấp cao hơn (db:hsk)
   coverId   String? // khóa gốc ảnh bối cảnh trên R2
   published Boolean    @default(false)
+  reviewed  Boolean    @default(false) // người biết tiếng Trung đã duyệt; sửa nội dung thì về false
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -395,6 +397,7 @@ model UserSlot {
 model UserEvent {
   userId        String    @db.Uuid
   month         String // "2026-10"
+  cycle         String    @default("") // tháng thật của phần đếm nhiệm vụ, khác `month` khi truyện được giữ chạy qua nhiều tháng
   tokens        Int       @default(0) // lượt gợi ý, hết hạn khi hết tháng
   points        Int       @default(0) // điểm sự kiện (xếp hạng)
   solved        Int       @default(0)
@@ -418,6 +421,25 @@ model UserEvent {
 
   @@id([userId, month])
   @@index([month, points(sort: Desc), medal(sort: Desc), lastSolvedAt])
+}
+
+/// Số ký tự Azure đã dùng để tạo giọng đọc mỗi tháng. Lưu ở database vì ổ đĩa của máy chủ có thể mất khi khởi động lại.
+model TtsUsage {
+  month String @id // "2026-11"
+  chars Int    @default(0)
+}
+
+/// Lượt chấm phát âm bằng Azure mỗi người mỗi ngày; `seconds` là số giây âm thanh đã gửi đi (tính cả hai lần gọi).
+model SpeakUsage {
+  userId   String @db.Uuid
+  day      String // "2026-11-02" (giờ Việt Nam)
+  attempts Int    @default(0)
+  seconds  Float  @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
 }
 
 // Nhiệm vụ ngày.

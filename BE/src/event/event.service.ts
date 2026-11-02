@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { hasHan, isChineseAnswer, pinyinKey } from '../common/text.js';
-import { Clock, vnDay } from '../common/time.js';
+import { Clock } from '../common/time.js';
 import { demo } from '../config/demo.js';
+import { eventDay, pinnedMonth } from './event-day.js';
 import { hintLessonOf, pickHintLesson, slotLessons } from './hint-lesson.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
@@ -31,8 +32,10 @@ export interface Hint {
 }
 export type ByGroup = Record<string, Hint>;
 
-/** Số ô đã mở của chương vào ngày `dayNo`. Bản demo (EVENT_OPEN_ALL) mở hết mọi ô của mọi chương. */
-const openCount = (chapterIdx: number, dayNo: number) => (demo.openAll ? SLOTS_PER_CHAPTER : cellsOpen(chapterIdx, dayNo));
+/** Bản demo (EVENT_OPEN_ALL) và truyện đang giữ qua nhiều tháng không khóa ô theo ngày/tuần. */
+const allOpen = () => demo.openAll || pinnedMonth() !== null;
+/** Số ô đã mở của chương vào ngày `dayNo`. */
+const openCount = (chapterIdx: number, dayNo: number) => (allOpen() ? SLOTS_PER_CHAPTER : cellsOpen(chapterIdx, dayNo));
 
 /** Nhóm cấp dùng cho gợi ý 2, 3: người học cấp 3 trở lên được trỏ tới hội thoại cấp cao. */
 const groupOf = (hskLevel: number) => (hskLevel >= 3 ? 2 : 1);
@@ -78,7 +81,7 @@ export class EventService {
   /** Toàn bộ trạng thái màn Sự kiện. Từ khóa chưa giải không bao giờ có trong kết quả. */
   async state(userId: string) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const [user, story, ev] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({ where: { id: userId } }),
       this.currentStory(day.monthKey),
@@ -144,7 +147,8 @@ export class EventService {
     return {
       active: true,
       story: { id: story.id, title: story.title, titleZh: story.titleZh, month: story.month },
-      openAll: demo.openAll,
+      openAll: allOpen(),
+      extended: pinnedMonth() !== null,
       day: day.day,
       daysInMonth: day.daysInMonth,
       reserveDay: day.day >= 29,
@@ -172,7 +176,7 @@ export class EventService {
   /** Mở gợi ý kế tiếp của một ô: tuần tự, tốn 1 lượt. */
   async openHint(userId: string, slotId: number) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (user.eventOptOut) throw new ForbiddenException('Bạn đang tắt sự kiện');
     const slot = await this.prisma.keySlot.findUnique({ where: { id: slotId }, include: { chapter: { include: { story: true, slots: true } } } });
@@ -225,7 +229,7 @@ export class EventService {
    */
   async guess(userId: string, lessonId: string, rawAnswer: string) {
     const now = this.clock.now();
-    const day = vnDay(now);
+    const day = eventDay(now);
     const answer = rawAnswer.trim();
     if (!answer || !isChineseAnswer(answer)) {
       throw new BadRequestException('Chỉ nhận đáp án tiếng Trung (chữ Hán hoặc pinyin)');
@@ -285,7 +289,7 @@ export class EventService {
 
       const { slot, chapter } = hit as { slot: (typeof story.chapters)[number]['slots'][number]; chapter: (typeof story.chapters)[number] };
       const u = mine.get(slot.id)!;
-      const early = demo.openAll || chapterOfDay(day.day) === chapter.idx;
+      const early = allOpen() || chapterOfDay(day.day) === chapter.idx;
       const pts = pointsFor(u.hintsOpened, early, ev.penalty);
       const solved = ev.solved + 1;
       const medal = Math.max(ev.medal, medalFor(solved));
@@ -324,7 +328,7 @@ export class EventService {
 
   /** Bảng xếp hạng chung: điểm → huy chương → ai giải xong sớm hơn. */
   async leaderboard(userId: string, limit = 50) {
-    const month = vnDay(this.clock.now()).monthKey;
+    const month = eventDay(this.clock.now()).monthKey;
     const orderBy = [{ points: 'desc' as const }, { medal: 'desc' as const }, { lastSolvedAt: 'asc' as const }];
     const rows = await this.prisma.userEvent.findMany({
       where: { month, solved: { gt: 0 } },
@@ -365,7 +369,7 @@ export class EventService {
   async canReadStory(userId: string, lessonId: string): Promise<boolean> {
     const hoi = await this.prisma.hoi.findFirst({ where: { storyLessonId: lessonId }, include: { chapter: { include: { story: true } } } });
     if (!hoi) return false;
-    const cur = vnDay(this.clock.now()).monthKey;
+    const cur = eventDay(this.clock.now()).monthKey;
     if (hoi.chapter.story.month < cur) return true;
     if (hoi.chapter.story.month > cur) return false;
     const solved = await this.prisma.userSlot.count({ where: { userId, foundAt: { not: null }, slot: { chapterId: hoi.chapterId } } });

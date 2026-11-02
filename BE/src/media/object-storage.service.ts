@@ -38,7 +38,7 @@ export class ObjectStorage {
       );
     } catch (e) {
       this.log.error(`Ghi ${key} lên R2 thất bại: ${(e as Error).message}`);
-      throw new BadGatewayException('Không lưu được ảnh, thử lại sau');
+      throw new BadGatewayException('Không lưu được file, thử lại sau');
     }
   }
 

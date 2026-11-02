@@ -41,6 +41,8 @@ export const setSignedOutHandler = (fn: (() => void) | null) => {
 interface Opts {
   method?: string;
   body?: unknown;
+  /** Gửi multipart (tải file); trình duyệt tự đặt Content-Type. */
+  form?: FormData;
   auth?: boolean;
 }
 
@@ -52,7 +54,7 @@ async function once<T>(path: string, opts: Opts): Promise<T> {
   const res = await fetch(API_BASE + path, {
     method: opts.method ?? 'GET',
     headers,
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    body: opts.form ?? (opts.body === undefined ? undefined : JSON.stringify(opts.body)),
   });
   if (res.status === 204) return undefined as T;
   const text = await res.text();

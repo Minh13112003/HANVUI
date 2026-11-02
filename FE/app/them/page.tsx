@@ -142,6 +142,21 @@ export default function MorePage() {
           <span className="chev">›</span>
         </Link>
 
+        {user?.role === 'ADMIN' ? (
+          <Link className="card row" href="/admin" style={{ gap: 12 }}>
+            <span className="mail-av han" data-s="ADMIN" aria-hidden="true">
+              管
+            </span>
+            <span className="grow">
+              <b>Quản trị bài học</b>
+              <small className="muted" style={{ display: 'block' }}>
+                Thêm, sửa, tạo âm thanh và đăng bài
+              </small>
+            </span>
+            <span className="chev">›</span>
+          </Link>
+        ) : null}
+
         <section className="card stack">
 
           <div>

@@ -1,0 +1,45 @@
+# Cấu hình Render cho BE (New → Blueprint). Các biến sync: false nhập trên trang Render, không ghi giá trị vào đây.
+services:
+  - type: web
+    name: hanvui-be
+    runtime: node
+    plan: free
+    region: singapore # cùng vùng với database Supabase (ap-southeast-1)
+    rootDir: BE
+    buildCommand: npx --yes pnpm@11.9.0 install --frozen-lockfile --prod=false && npx --yes pnpm@11.9.0 build && npx --yes pnpm@11.9.0 db:deploy
+    startCommand: node dist/main
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: AZURE_SPEECH_KEY
+        sync: false
+      - key: AZURE_SPEECH_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: S3_REGION
+        value: auto
+      # Bản demo: EVENT_PINNED_MONTH xóa đi là đóng sự kiện. Phát hành thật thì đặt EVENT_OPEN_ALL=false, DEMO_STARTER_TOKENS=0.
+      - key: EVENT_PINNED_MONTH
+        value: "2026-10"
+      - key: EVENT_OPEN_ALL
+        value: "true"
+      - key: DEMO_STARTER_TOKENS
+        value: "999"

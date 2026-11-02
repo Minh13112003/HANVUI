@@ -61,7 +61,7 @@ try {
     await sleep(PAUSE_MS);
   }
   console.log(`\n[${PROVIDER}] Xong: tạo mới ${made} file (${(bytes / 1024 / 1024).toFixed(2)} MB), bỏ qua ${skipped} từ đã có.`);
-  if (PROVIDER === 'azure') console.log(`Ký tự Azure đã dùng tháng này: ${usedThisMonth()}`);
+  if (PROVIDER === 'azure') console.log(`Ký tự Azure đã dùng tháng này: ${await usedThisMonth()}`);
 } finally {
   await rm(dir, { recursive: true, force: true });
   await prisma.$disconnect();

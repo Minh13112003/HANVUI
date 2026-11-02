@@ -2,6 +2,7 @@ import '../src/config/dotenv.js';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { vi } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { Clock } from '../src/common/time.js';
@@ -13,6 +14,8 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 // Cần database thật đã seed (pnpm db:seed, db:seed:chapters, db:seed:exams). Tài khoản thử xóa ở cuối.
 // Giả định .env có EVENT_OPEN_ALL=true và DEMO_STARTER_TOKENS=999 (bản demo).
 const run = !!process.env.DATABASE_URL;
+// Các test sự kiện cần truyện 2026-10 đang chạy, không phụ thuộc tháng hiện tại hay .env.
+process.env.EVENT_PINNED_MONTH = '2026-10';
 
 async function boot(clock?: Date) {
   let builder = Test.createTestingModule({ imports: [AppModule] });
@@ -474,6 +477,73 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(t.body.syllables[0].verdict).toBe('tone');
     });
 
+    describe('chấm phát âm (Azure giả lập, không tốn hạn mức)', () => {
+      const wav = (seconds: number) => {
+        const data = Math.round(seconds * 16000) * 2;
+        const b = Buffer.alloc(44 + data);
+        b.write('RIFF', 0, 'latin1');
+        b.writeUInt32LE(36 + data, 4);
+        b.write('WAVEfmt ', 8, 'latin1');
+        b.writeUInt32LE(16, 16);
+        b.writeUInt16LE(1, 20);
+        b.writeUInt16LE(1, 22);
+        b.writeUInt32LE(16000, 24);
+        b.writeUInt32LE(32000, 28);
+        b.writeUInt16LE(2, 32);
+        b.writeUInt16LE(16, 34);
+        b.write('data', 36, 'latin1');
+        b.writeUInt32LE(data, 40);
+        return b;
+      };
+      const send = (target: string, audio: Buffer) =>
+        request(http()).post('/api/v1/speak/assess').set(S.auth).field('target', target).attach('audio', audio, { filename: 'speech.wav', contentType: 'audio/wav' });
+      const azure = vi.fn(async (_url: string, init: { headers: Record<string, string> }) => {
+        const scored = 'Pronunciation-Assessment' in init.headers;
+        const body = scored
+          ? { RecognitionStatus: 'Success', NBest: [{ AccuracyScore: 94, Words: [{ Word: '老师', AccuracyScore: 94, Phonemes: [{ AccuracyScore: 100 }, { AccuracyScore: 79 }] }] }] }
+          : { RecognitionStatus: 'Success', DisplayText: '捞屎。' };
+        return new Response(JSON.stringify(body), { status: 200 });
+      });
+      const usage = () => prisma.speakUsage.findMany({ where: { userId: S.id } });
+
+      beforeAll(() => vi.stubGlobal('fetch', azure));
+      afterAll(() => vi.unstubAllGlobals());
+
+      it('chấm hai lớp: bắt được lỗi thanh, ghi lượt và số giây gấp đôi, không lộ khóa', async () => {
+        const before = await request(http()).get('/api/v1/speak/assess').set(S.auth).expect(200);
+        const r = await send('老师', wav(1)).expect(200);
+        expect(r.body).toMatchObject({ noSpeech: false, score: 72, rating: 'fair', accuracy: 94, toneChecked: true, left: before.body.left - 1 });
+        expect(r.body.syllables.map((s: { verdict: string; accuracy: number }) => [s.verdict, s.accuracy])).toEqual([['tone', 100], ['tone', 79]]);
+        expect(azure).toHaveBeenCalledTimes(2);
+        expect(JSON.stringify(r.body)).not.toContain(process.env.AZURE_SPEECH_KEY || 'không-có-khóa');
+        const [row] = await usage();
+        expect(row).toMatchObject({ attempts: 1, seconds: 2 });
+      });
+
+      it('từ chối file sai định dạng, quá dài hoặc câu không có chữ Hán mà không gọi Azure', async () => {
+        azure.mockClear();
+        await send('老师', Buffer.alloc(200)).expect(400);
+        await send('老师', wav(15.02)).expect(400);
+        await send('老师', wav(16)).expect(413); // vượt cỡ file, bị chặn ngay khi nhận
+        await send('hello', wav(1)).expect(400);
+        expect(azure).not.toHaveBeenCalled();
+      });
+
+      it('hết lượt trong ngày thì báo 429 và không gọi Azure', async () => {
+        azure.mockClear();
+        await prisma.speakUsage.updateMany({ where: { userId: S.id }, data: { attempts: 20 } });
+        await send('老师', wav(1)).expect(429);
+        expect(azure).not.toHaveBeenCalled();
+        const st = await request(http()).get('/api/v1/speak/assess').set(S.auth).expect(200);
+        expect(st.body.left).toBe(0);
+        await prisma.speakUsage.deleteMany({ where: { userId: S.id } });
+      });
+
+      it('phải đăng nhập', async () => {
+        await request(http()).get('/api/v1/speak/assess').expect(401);
+      });
+    });
+
     it('luyện dịch: đề không lộ đáp án, chấm theo cụm, tự đánh dấu đúng ý, khóa theo cấp', async () => {
       const list = await request(http()).get('/api/v1/translate/grammar/ma-ne?direction=zh2vi').set(S.auth).expect(200);
       expect(list.body.length).toBeGreaterThanOrEqual(3);
@@ -553,6 +623,52 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
   });
 });
 
+describe.skipIf(!run)('Giữ truyện chạy qua nhiều tháng (e2e, EVENT_PINNED_MONTH)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let id: string;
+  let auth: { Authorization: string };
+  const clock = new Date('2026-10-20T05:00:00Z');
+  const http = () => app.getHttpServer();
+
+  beforeAll(async () => {
+    app = await boot(clock);
+    prisma = app.get(PrismaService);
+    const u = await signup(app, 'pinned');
+    id = u.id;
+    auth = u.auth;
+  });
+  afterAll(async () => {
+    await prisma.user.deleteMany({ where: { id } });
+    await app.close();
+  });
+
+  it('sang tháng mới vẫn là truyện cũ, giữ lượt, đăng nhập và nhiệm vụ tuần đếm lại', async () => {
+    await request(http()).post('/api/v1/event/checkin').set(auth).expect(200);
+    const oct =await prisma.userEvent.findUniqueOrThrow({ where: { userId_month: { userId: id, month: '2026-10' } } });
+    expect(oct.lastLoginDay).toBe(20);
+    await prisma.userEvent.update({ where: { userId_month: { userId: id, month: '2026-10' } }, data: { weekClaimed: [1, 1, 1, 1], points: 500, solved: 2 } });
+
+    clock.setTime(new Date('2026-11-20T05:00:00Z').getTime()); // cùng số ngày, khác tháng
+    const ci = await request(http()).post('/api/v1/event/checkin').set(auth).expect(200);
+    expect(ci.body.alreadyCheckedIn).toBe(false);
+
+    const ev = await request(http()).get('/api/v1/event').set(auth).expect(200);
+    expect(ev.body).toMatchObject({ active: true, extended: true, openAll: true, points: 500, solved: 2 });
+    expect(ev.body.story.month).toBe('2026-10');
+    expect(ev.body.tokens).toBeGreaterThan(oct.tokens);
+    expect(ev.body.chapters).toHaveLength(4);
+
+    const nov = await prisma.userEvent.findUniqueOrThrow({ where: { userId_month: { userId: id, month: '2026-10' } } });
+    expect(nov.cycle).toBe('2026-11');
+    expect(nov.weekClaimed).toEqual([0, 0, 0, 0]);
+    expect(nov.loginBits).toBe(1 << 19);
+    expect(await prisma.userEvent.count({ where: { userId: id, month: '2026-11' } })).toBe(0);
+    // chưa đóng thì chưa vào kho
+    await request(http()).get('/api/v1/event/archive/2026-10').set(auth).expect(400);
+  });
+});
+
 describe.skipIf(!run)('Kho lưu trữ sau khi sự kiện kết thúc (e2e, giả đồng hồ sang 05/11/2026)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -561,6 +677,7 @@ describe.skipIf(!run)('Kho lưu trữ sau khi sự kiện kết thúc (e2e, gi�
   const http = () => app.getHttpServer();
 
   beforeAll(async () => {
+    delete process.env.EVENT_PINNED_MONTH;
     app = await boot(new Date('2026-11-05T05:00:00Z'));
     prisma = app.get(PrismaService);
     const u = await signup(app, 'archive');
@@ -568,6 +685,7 @@ describe.skipIf(!run)('Kho lưu trữ sau khi sự kiện kết thúc (e2e, gi�
     auth = u.auth;
   });
   afterAll(async () => {
+    process.env.EVENT_PINNED_MONTH = '2026-10';
     await prisma.user.deleteMany({ where: { id } });
     await app.close();
   });
