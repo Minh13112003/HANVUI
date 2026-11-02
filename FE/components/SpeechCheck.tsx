@@ -124,7 +124,7 @@ export default function SpeechCheck({ target }: { target: string }) {
         <b>Đọc để máy chấm</b>
         <p className="muted" style={{ fontSize: 13 }}>
           Trình duyệt này chưa có nhận dạng giọng nói. Hãy mở app bằng Chrome hoặc Edge (máy tính, Android) để dùng tính năng
-          này. Bạn vẫn có thể ghi âm và tự nghe lại ở bên dưới.
+          này. Bạn vẫn có thể nghe mẫu và đọc theo.
         </p>
       </div>
     );

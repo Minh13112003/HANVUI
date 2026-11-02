@@ -1,7 +1,7 @@
 'use client';
 // Chấm phát âm thang 100 bằng Azure (rule.md 3.5): ghi âm → đổi sang WAV 16 kHz → cắt khoảng lặng → gửi máy chủ chấm.
-// Máy chủ chưa cài Azure thì ẩn hẳn, người học vẫn còn "Đọc để máy chấm" của trình duyệt.
-import { useEffect, useRef, useState } from 'react';
+// Máy chủ chưa cài Azure hoặc hết lượt hôm nay thì hiện `fallback` ("Đọc để máy chấm" của trình duyệt) thay cho nút ghi âm.
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { encodeWav, trimSilence } from '@/lib/trim-silence';
 
@@ -61,8 +61,10 @@ async function toMono16k(blob: Blob): Promise<Float32Array> {
   }
 }
 
-export default function PronCheck({ target }: { target: string }) {
+export default function PronCheck({ target, fallback }: { target: string; fallback: ReactNode }) {
   const [status, setStatus] = useState<Status | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [replay, setReplay] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'rec' | 'busy'>('idle');
   const [result, setResult] = useState<Result | null>(null);
   const [cut, setCut] = useState<{ before: number; after: number } | null>(null);
@@ -73,14 +75,19 @@ export default function PronCheck({ target }: { target: string }) {
   useEffect(() => {
     api<Status>('/speak/assess')
       .then(setStatus)
-      .catch(() => setStatus(null));
+      .catch(() => setStatus(null))
+      .finally(() => setLoaded(true));
   }, []);
 
   useEffect(() => {
     setResult(null);
     setCut(null);
     setErr('');
+    setReplay(null);
   }, [target]);
+
+  // Bản ghi để nghe lại chỉ nằm trên máy; thay bản mới hoặc rời trang thì giải phóng.
+  useEffect(() => (replay ? () => URL.revokeObjectURL(replay) : undefined), [replay]);
 
   // Rời trang hoặc đổi từ khi đang ghi: dừng và bỏ bản ghi.
   useEffect(
@@ -100,6 +107,7 @@ export default function PronCheck({ target }: { target: string }) {
 
   const grade = async (blob: Blob) => {
     setPhase('busy');
+    setReplay(URL.createObjectURL(blob));
     try {
       const trimmed = trimSilence(await toMono16k(blob), RATE);
       if (!trimmed) {
@@ -125,6 +133,7 @@ export default function PronCheck({ target }: { target: string }) {
     setErr('');
     setResult(null);
     setCut(null);
+    setReplay(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       const r = new MediaRecorder(stream);
@@ -148,11 +157,13 @@ export default function PronCheck({ target }: { target: string }) {
     }
   };
 
-  if (!status?.enabled) return null;
-  const out = status.left <= 0;
+  if (!loaded) return null;
+  if (!status?.enabled) return <>{fallback}</>;
+  const out = status.left <= 0 && phase === 'idle';
   const shown = result && !result.noSpeech && result.rating ? RATING[result.rating] : null;
 
   return (
+    <>
     <div className="card stack">
       <div className="row between">
         <b>Chấm phát âm</b>
@@ -160,17 +171,31 @@ export default function PronCheck({ target }: { target: string }) {
           Còn {status.left}/{status.dailyLimit} lượt hôm nay
         </span>
       </div>
-      <p className="muted" style={{ fontSize: 13 }}>
-        Bấm ghi âm, đọc: <b className="han">{target}</b>
-      </p>
-      <button className={'mic' + (phase === 'rec' ? ' rec' : '')} disabled={phase === 'busy' || (out && phase === 'idle')} onClick={phase === 'rec' ? () => rec.current?.stop() : start}>
-        {phase === 'rec' ? <span className="pulse" /> : null}
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 4a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
-        </svg>
-        {phase === 'rec' ? 'Đọc xong bấm để chấm' : phase === 'busy' ? 'Đang chấm…' : out ? 'Hết lượt hôm nay' : 'Ghi âm để chấm điểm'}
-      </button>
+      {out ? (
+        <p className="muted" style={{ fontSize: 13 }}>
+          Bạn đã hết lượt chấm điểm hôm nay. Vẫn có thể luyện bằng phần bên dưới.
+        </p>
+      ) : (
+        <>
+          <p className="muted" style={{ fontSize: 13 }}>
+            Bấm ghi âm, đọc: <b className="han">{target}</b>
+          </p>
+          <button className={'mic' + (phase === 'rec' ? ' rec' : '')} disabled={phase === 'busy'} onClick={phase === 'rec' ? () => rec.current?.stop() : start}>
+            {phase === 'rec' ? <span className="pulse" /> : null}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+            {phase === 'rec' ? 'Đọc xong bấm để chấm' : phase === 'busy' ? 'Đang chấm…' : 'Ghi âm để chấm điểm'}
+          </button>
+        </>
+      )}
       {err ? <div className="alert">{err}</div> : null}
+      {replay && phase === 'idle' ? (
+        <div className="stack">
+          <small className="muted">Nghe lại giọng của bạn:</small>
+          <audio controls src={replay} style={{ width: '100%' }} />
+        </div>
+      ) : null}
 
       {shown ? (
         <>
@@ -209,5 +234,7 @@ export default function PronCheck({ target }: { target: string }) {
         Bản ghi được gửi tới dịch vụ Azure của Microsoft để chấm. HanVui không lưu giọng nói của bạn.
       </small>
     </div>
+    {out ? fallback : null}
+    </>
   );
 }
