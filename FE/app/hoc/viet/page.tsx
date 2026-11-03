@@ -2,7 +2,6 @@
 // Kỹ năng Viết (rule.md mục 3.5): tập viết từng nét (đã có), sắp xếp câu và điền chữ — đều chấm tự động được.
 import { useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
-import SkillNav from '@/components/SkillNav';
 import GrammarSection from '@/components/GrammarSection';
 import Stroke from '@/components/Stroke';
 import { WriteHelpButton } from '@/components/WriteHelp';
@@ -51,7 +50,6 @@ export default function WritePage() {
   return (
     <Shell title="Viết">
       <div className="stack">
-        <SkillNav />
         <div className="row between">
           <h1>Viết</h1>
           <span className="row" style={{ gap: 8 }}>

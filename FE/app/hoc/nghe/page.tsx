@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
 import Tips from '@/components/Tips';
-import SkillNav from '@/components/SkillNav';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { clueColor, hasClueColor } from '@/lib/clue';
@@ -69,7 +68,6 @@ export default function ListenListPage() {
   return (
     <Shell title="Nghe">
       <div className="stack">
-        <SkillNav />
 
         <div
           className="lvlseg"

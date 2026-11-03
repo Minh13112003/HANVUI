@@ -3,7 +3,6 @@
 // Azure chưa cài hoặc hết lượt thì đổi sang nhận dạng giọng nói của trình duyệt (SpeechCheck).
 import { useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
-import SkillNav from '@/components/SkillNav';
 import PronCheck from '@/components/PronCheck';
 import SpeechCheck from '@/components/SpeechCheck';
 import { Pinyin } from '@/components/WordSheet';
@@ -48,7 +47,6 @@ export default function SpeakPage() {
   return (
     <Shell title="Nói">
       <div className="stack">
-        <SkillNav />
         <div className="row between">
           <h1>Đọc theo mẫu</h1>
         </div>

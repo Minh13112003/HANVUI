@@ -67,7 +67,6 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
   const [replay, setReplay] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'rec' | 'busy'>('idle');
   const [result, setResult] = useState<Result | null>(null);
-  const [cut, setCut] = useState<{ before: number; after: number } | null>(null);
   const [err, setErr] = useState('');
   const rec = useRef<MediaRecorder | null>(null);
   const timer = useRef(0);
@@ -81,7 +80,6 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
 
   useEffect(() => {
     setResult(null);
-    setCut(null);
     setErr('');
     setReplay(null);
   }, [target]);
@@ -114,7 +112,6 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
         setErr('Máy chưa nghe thấy tiếng bạn. Đọc to hơn hoặc lại gần micro nhé. Lượt này không bị tính.');
         return;
       }
-      setCut({ before: trimmed.before, after: trimmed.after });
       const form = new FormData();
       form.append('target', target);
       form.append('audio', encodeWav(trimmed.samples, RATE), 'speech.wav');
@@ -132,7 +129,6 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
   const start = async () => {
     setErr('');
     setResult(null);
-    setCut(null);
     setReplay(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -225,14 +221,6 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
         </>
       ) : null}
 
-      {cut ? (
-        <small className="muted">
-          Đã cắt khoảng lặng: {cut.before.toFixed(1)} giây còn {cut.after.toFixed(1)} giây.
-        </small>
-      ) : null}
-      <small className="muted" style={{ fontSize: 11 }}>
-        Bản ghi được gửi tới dịch vụ Azure của Microsoft để chấm. HanVui không lưu giọng nói của bạn.
-      </small>
     </div>
     {out ? fallback : null}
     </>

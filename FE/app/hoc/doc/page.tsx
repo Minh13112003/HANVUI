@@ -4,7 +4,6 @@
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import Shell from '@/components/Shell';
-import SkillNav from '@/components/SkillNav';
 import SuggestWords from '@/components/SuggestWords';
 import WordSheet from '@/components/WordSheet';
 import { api } from '@/lib/api';
@@ -159,7 +158,6 @@ export default function ReadPage() {
   return (
     <Shell title="Đọc">
       <div className="stack">
-        <SkillNav />
         <h1>Bài đọc</h1>
 
         {!cards ? <p className="muted">Đang tải…</p> : null}

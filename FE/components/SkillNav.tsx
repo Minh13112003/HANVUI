@@ -1,5 +1,5 @@
 'use client';
-// Thanh chọn trong mục Học: Từ vựng và bốn kỹ năng (rule.md mục 3.5).
+// Thanh chọn trong mục Học: Từ vựng và bốn kỹ năng (rule.md mục 3.5). Chỉ hiện ở trang gốc /hoc; trang kỹ năng dùng nút Quay lại.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
