@@ -100,6 +100,7 @@ model User {
   examAttempts  ExamAttempt[]
   vocabTests    VocabTest[]
   translations  TranslateDone[]
+  translateSentences TranslateSentenceDone[]
   mails         UserMail[]
 }
 
@@ -163,11 +164,13 @@ model Word {
   audioHash String? // băm chữ + giọng + nhà cung cấp; đổi thì sinh lại
   mnemonic  String? // cách nhớ chữ (chiết tự / câu chuyện), content/word-extra-*.ts
   colloc    Json? // [{ p: mẫu cụm từ, ex: [{ zh, pinyin, vi }] }]
+  usage     String? // ngữ cảnh dùng từ
+  synonyms  Json? // [{ zh, pinyin, vi }] từ đồng nghĩa hoặc gần nghĩa, từ trái nghĩa có ghi rõ
 
   topic     Topic?     @relation(fields: [topicId], references: [id])
   userWords UserWord[]
   keySlots  KeySlot[]
-
+  coreTopics CoreTopicWord[]
   @@unique([zh, pinyin])
   @@index([topicId])
   @@index([zh])
@@ -736,4 +739,65 @@ model RedeemUse {
   code RedeemCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
 
   @@id([userId, codeId])
+}
+
+/// Câu của mục Luyện dịch (tab Học, rule.md mục 8). Chấm theo cụm ý và thứ tự soạn sẵn, không dùng AI. Đáp án chỉ ở máy chủ.
+model TranslateSentence {
+  id       Int      @id @default(autoincrement())
+  zh       String   @unique
+  vi       String // bản dịch tự nhiên (bản tham khảo)
+  level    Int
+  title    String
+  note     String // vì sao từ đổi vị trí
+  tokens   Json // [{ zh, py, vi }]: từng từ theo thứ tự tiếng Trung
+  natural  Json // [{ vi, at }]: câu tự nhiên, at = vị trí từ trong tokens (mũi tên)
+  accept   Json // string[][]: cách dịch được nhận của từng từ
+  optional Int[] // vị trí từ không bắt buộc phải dịch ra
+  filler   String[] // từ đệm tiếng Việt không tính là thừa
+  orders   Json // number[][]: các thứ tự tiếng Việt được nhận
+  alt      String[] // cách viết tiếng Trung khác được nhận (Việt → Trung)
+  sort     Int      @default(0)
+
+  done TranslateSentenceDone[]
+
+  @@index([level, sort])
+}
+
+/// Kết quả mục Luyện dịch của người học, mỗi câu mỗi chiều một dòng.
+model TranslateSentenceDone {
+  id         Int      @id @default(autoincrement())
+  userId     String   @db.Uuid
+  sentenceId Int
+  direction  String // 'zh2vi' | 'vi2zh'
+  correct    Boolean
+  attempts   Int      @default(1)
+  updatedAt  DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentence TranslateSentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sentenceId, direction])
+}
+
+/// Sổ từ cốt lõi theo chủ đề chuyên ngành (AI, Công nghệ...). Người học xem danh sách, lưu từng từ hoặc lưu hết vào Sổ tay.
+model CoreTopic {
+  id    String @id
+  name  String
+  glyph String
+  intro String
+  sort  Int    @default(0)
+
+  words CoreTopicWord[]
+}
+
+model CoreTopicWord {
+  topicId String
+  wordId  Int
+  sort    Int    @default(0)
+
+  topic CoreTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  word  Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@id([topicId, wordId])
+  @@index([wordId])
 }

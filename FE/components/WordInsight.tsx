@@ -21,6 +21,8 @@ export interface CharInfo {
   parts: CharPart[];
 }
 export interface Insight {
+  usage?: string | null;
+  synonyms?: { zh: string; pinyin: string; vi: string }[];
   mnemonic: string | null;
   colloc: { p: string; ex: { zh: string; pinyin: string; vi: string }[] }[] | null;
   chars: CharInfo[];

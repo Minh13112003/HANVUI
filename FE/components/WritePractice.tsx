@@ -21,6 +21,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
   const [picked, setPicked] = useState<string[]>([]);
   const [res, setRes] = useState<WritingCheck | null>(null);
   const [err, setErr] = useState('');
+  const [hsk4, setHsk4] = useState(false);
 
   const load = useCallback(async () => {
     setBatch(null);
@@ -31,11 +32,11 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
     setErr('');
     try {
       if (items) setBatch({ items, lockedCount: 0, level: 0 });
-      else setBatch(await api<WritingBatch>('/writing?type=' + kind + '&count=8'));
+      else setBatch(await api<WritingBatch>('/writing?type=' + kind + '&count=8' + (hsk4 ? '&level=4' : '')));
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Không tải được bài tập');
     }
-  }, [kind, items]);
+  }, [kind, items, hsk4]);
   useEffect(() => {
     load();
   }, [load]);
@@ -94,6 +95,16 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
 
   return (
     <div className="card stack">
+      {kind && !items ? (
+        <div className="chips">
+          <button className={'chip' + (!hsk4 ? ' on' : '')} onClick={() => setHsk4(false)}>
+            Theo cấp của bạn
+          </button>
+          <button className={'chip' + (hsk4 ? ' on' : '')} onClick={() => setHsk4(true)}>
+            HSK 4 chuyên ngành
+          </button>
+        </div>
+      ) : null}
       <div className="row between">
         <b>{TITLE[item.type]}</b>
         <span className="pill">

@@ -15,6 +15,7 @@ const LEVELS = [
   { n: 1, name: 'HSK 1', note: 'câu ngắn' },
   { n: 2, name: 'HSK 2', note: 'dài hơn' },
   { n: 3, name: 'HSK 3', note: 'nhiều từ' },
+  { n: 4, name: 'HSK 4', note: 'chuyên ngành' },
 ];
 
 export default function ListenListPage() {
@@ -72,7 +73,7 @@ export default function ListenListPage() {
         <div
           className="lvlseg"
           data-lv={level}
-          style={{ ['--x' as string]: level - 1, ['--n' as string]: 3 }}
+          style={{ ['--x' as string]: level - 1, ['--n' as string]: LEVELS.length }}
           role="tablist"
           aria-label="Cấp HSK"
         >

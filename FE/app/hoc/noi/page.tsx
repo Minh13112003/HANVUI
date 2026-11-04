@@ -22,17 +22,18 @@ export default function SpeakPage() {
 
   useEffect(() => {
     if (!user) return;
-    api<Topic[]>('/topics?kind=VOCAB')
-      .then((t) => {
-        setTopics(t);
-        if (t[0]) setTid(t[0].id);
+    Promise.all([api<Topic[]>('/topics?kind=VOCAB'), api<Topic[]>('/core-topics').catch(() => [] as Topic[])])
+      .then(([t, core]) => {
+        const all = [...t, ...core.map((c) => ({ ...c, id: 'core:' + c.id }))];
+        setTopics(all);
+        if (all[0]) setTid(all[0].id);
       })
       .catch(() => {});
   }, [user]);
 
   useEffect(() => {
     if (!tid) return;
-    api<{ words: Word[] }>('/topics/' + tid + '/words')
+    api<{ words: Word[] }>(tid.startsWith('core:') ? '/core-topics/' + tid.slice(5) + '/speak' : '/topics/' + tid + '/words')
       .then((d) => {
         setWords(d.words);
         setI(0);

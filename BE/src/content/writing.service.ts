@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { equivHsk2 } from '../common/hsk.js';
+import { equivHsk2, OPEN_LEVEL } from '../common/hsk.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 type WType = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
@@ -26,10 +26,10 @@ export class WritingService {
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
     const eq = equivHsk2(me.hskStandard, me.hskLevel);
     const rows = await this.prisma.writingItem.findMany({
-      where: { type, level: level ? Math.min(level, eq) : { lte: eq } },
+      where: { type, level: level === OPEN_LEVEL ? OPEN_LEVEL : level ? Math.min(level, eq) : { lte: eq } },
       include: { done: { where: { userId } } },
     });
-    const locked = await this.prisma.writingItem.count({ where: { type, level: { gt: eq } } });
+    const locked = await this.prisma.writingItem.count({ where: { type, level: { gt: eq, not: OPEN_LEVEL } } });
     // Ưu tiên bài chưa làm hoặc làm sai.
     const fresh = shuffle(rows.filter((r) => !r.done[0]?.correct));
     const rest = shuffle(rows.filter((r) => r.done[0]?.correct));
@@ -48,7 +48,7 @@ export class WritingService {
     const item = await this.prisma.writingItem.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Không có bài tập này');
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
-    if (item.level > equivHsk2(me.hskStandard, me.hskLevel)) throw new BadRequestException(`Bài này thuộc HSK ${item.level}, chưa mở khóa`);
+    if (item.level !== OPEN_LEVEL && item.level > equivHsk2(me.hskStandard, me.hskLevel)) throw new BadRequestException(`Bài này thuộc HSK ${item.level}, chưa mở khóa`);
 
     const d = item.data as Data;
     let correct = false;

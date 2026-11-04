@@ -1,6 +1,6 @@
 'use client';
-// Một bài hội thoại: Nghe → Trả lời → Xem lời thoại (rule.md mục 3.2). Lời thoại khóa tới khi trả lời xong
-// hoặc bấm bỏ qua. Lưu từ bằng "Chế độ lưu từ", chọn nhiều từ trong cùng câu thì lưu cả cụm.
+// Một bài hội thoại: Nghe → Trả lời → Xem lời thoại (rule.md mục 3.2). Lời thoại khóa tới khi trả lời xong.
+// Bài đã hoàn thành mở lại là ôn tập: lời thoại làm mờ, bấm hoặc làm xong mới mở. Lưu từ bằng "Chế độ lưu từ", chọn nhiều từ trong cùng câu thì lưu cả cụm.
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Confetti } from '@/components/Bits';
@@ -11,6 +11,8 @@ import { lessonLabel } from '@/lib/text';
 import { useUi } from '@/lib/ui';
 import type { AnswerResult, Lesson, Token } from '@/lib/types';
 import GuessSheet from './GuessSheet';
+import LessonQuiz from './LessonQuiz';
+import RevealBlur from './RevealBlur';
 import SuggestWords from './SuggestWords';
 import WordSheet from './WordSheet';
 
@@ -34,7 +36,9 @@ export default function LessonView({ id }: { id: string }) {
   const { toast, openSheet } = useUi();
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [picks, setPicks] = useState<number[]>([]);
+  const [review, setReview] = useState(false);
+  const [reviewDone, setReviewDone] = useState(false);
+  const [peekText, setPeekText] = useState(false);
   const [result, setResult] = useState<AnswerResult | null>(null);
   const [cur, setCur] = useState(-1);
   const [slow, setSlow] = useState(false);
@@ -57,7 +61,7 @@ export default function LessonView({ id }: { id: string }) {
     try {
       const l = await api<Lesson>('/lessons/' + id);
       setLesson(l);
-      setPicks(new Array(l.questions.length).fill(-1));
+      setReview(l.progress.allDone && l.questions.length > 0);
       if (l.kind === 'STORY' && (user?.hskLevel ?? 1) <= 2) setShowVi(true);
       // Truyện không có câu hỏi: mở lời thoại ngay để đọc.
       if (!l.progress.transcript && l.questions.length === 0) {
@@ -114,34 +118,22 @@ export default function LessonView({ id }: { id: string }) {
     play(l.zh ?? '', l.audioKey, { slow, gender: r?.gender, pitchRange: r?.pitchRange, onEnd: () => setCur(-1) });
   };
 
-  const submit = async () => {
-    if (!lesson) return;
-    try {
-      const r = await api<AnswerResult>('/lessons/' + id + '/answers', {
-        method: 'POST',
-        body: { answers: picks, listenedPct },
-      });
-      setResult(r);
-      if (r.correct === r.total) setBurst((b) => b + 1);
-      if (r.mission?.granted) toast('Nhiệm vụ ngày: +' + r.mission.granted + ' lượt gợi ý');
-      if (r.mission?.counted) setMissionDone(true);
-      setLesson(await api<Lesson>('/lessons/' + id));
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Không nộp được');
-    }
-  };
-
-  const skip = async () => {
-    await api('/lessons/' + id + '/skip', { method: 'POST' });
-    toast('Bài này không tính vào nhiệm vụ hôm nay');
-    setLesson(await api<Lesson>('/lessons/' + id));
+  const submit = async (answers: number[]) => {
+    const r = await api<AnswerResult>('/lessons/' + id + '/answers', { method: 'POST', body: { answers, listenedPct } });
+    setResult(r);
+    if (r.correct === r.total) setBurst((b) => b + 1);
+    if (r.mission?.granted) toast('Nhiệm vụ ngày: +' + r.mission.granted + ' lượt gợi ý');
+    if (r.mission?.counted) setMissionDone(true);
+    if (review) setReviewDone(true);
+    else setLesson(await api<Lesson>('/lessons/' + id));
+    return r;
   };
 
   /** Đã nghe đủ sau khi mở lời thoại thì vẫn tính nhiệm vụ (gửi lại cùng đáp án). */
   const claimMission = async () => {
     const r = await api<AnswerResult>('/lessons/' + id + '/answers', {
       method: 'POST',
-      body: { answers: result ? result.results.map((x) => x.picked) : picks, listenedPct: 100 },
+      body: { answers: result ? result.results.map((x) => x.picked) : [], listenedPct: 100 },
     });
     setMissionDone(true);
     toast(r.mission?.granted ? 'Nhiệm vụ ngày: +' + r.mission.granted + ' lượt' : 'Đã tính bài này vào nhiệm vụ');
@@ -177,7 +169,8 @@ export default function LessonView({ id }: { id: string }) {
   if (err) return <div className="card">{err}</div>;
   if (!lesson) return <p className="muted">Đang tải bài…</p>;
 
-  const answered = !!result || lesson.progress.allDone;
+  const showText = unlocked && (!review || reviewDone || peekText);
+  const canClaim = !review || reviewDone;
   const step = unlocked ? 2 : playedN ? 1 : 0;
   const twinLevel = lesson.twinId ? (lesson.twinId.endsWith('3') ? 3 : lesson.twinId.endsWith('2') ? 2 : 1) : 0;
 
@@ -200,6 +193,15 @@ export default function LessonView({ id }: { id: string }) {
           ) : null}
         </div>
       </div>
+
+      {lesson.progress.allDone && lesson.questions.length ? (
+        <div className="donebar">
+          <b>
+            ✓ Đã hoàn thành · Đúng {result?.correct ?? lesson.progress.correct}/{lesson.questions.length} câu
+          </b>
+          {review && !reviewDone ? <span>Bạn đang ôn lại. Làm xong, kết quả mới sẽ ghi đè kết quả cũ.</span> : null}
+        </div>
+      ) : null}
 
       {lesson.kind === 'STORY' ? (
         <div className="alert">
@@ -251,66 +253,12 @@ export default function LessonView({ id }: { id: string }) {
         </div>
       </div>
 
-      {lesson.questions.length ? (
-        <div className="card stack">
-          <div className="row between">
-            <h2>Trả lời câu hỏi</h2>
-            <span className="pill">{answered ? 'Đã trả lời' : picks.filter((p) => p >= 0).length + '/' + lesson.questions.length}</span>
-          </div>
-          {lesson.questions.map((q, qi) => {
-            const r = result?.results[qi];
-            const vi = r?.promptVi ?? q.promptVi;
-            const optVi = r?.optionsVi ?? q.optionsVi;
-            return (
-              <div className="q" key={q.idx}>
-                <div className="hq">
-                  {q.prompt}
-                  {vi && (showVi || answered) ? <span className="t2">{vi}</span> : null}
-                </div>
-                <div className="optgrid">
-                  {q.options.map((o, oi) => {
-                    const cls = r ? (oi === r.answer ? ' ok' : oi === r.picked ? ' no' : '') : picks[qi] === oi ? ' sel' : '';
-                    return (
-                      <button
-                        key={oi}
-                        className={'opt' + cls}
-                        style={picks[qi] === oi && !r ? { borderColor: 'var(--accent)' } : undefined}
-                        disabled={answered}
-                        onClick={() => setPicks(picks.map((p, i) => (i === qi ? oi : p)))}
-                      >
-                        <span className="han">{o}</span>
-                        {optVi && (showVi || answered) ? <span className="t2">{optVi[oi]}</span> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-          {!answered ? (
-            <>
-              <Switch on={showVi} set={setShowVi} label="Dịch câu hỏi" />
-              {!lesson.questions[0]?.promptVi && showVi ? (
-                <p className="muted" style={{ fontSize: 12 }}>
-                  Bản dịch hiện sau khi trả lời (để nghe hiểu trước).
-                </p>
-              ) : null}
-              <button className="btn primary" disabled={picks.some((p) => p < 0)} onClick={submit}>
-                Nộp đáp án
-              </button>
-            </>
-          ) : (
-            <b>
-              Đúng {result?.correct ?? lesson.progress.correct}/{lesson.questions.length} câu
-            </b>
-          )}
-        </div>
-      ) : null}
+      {lesson.questions.length ? <LessonQuiz key={lesson.id} questions={lesson.questions} review={review} title="Trả lời câu hỏi" submitLabel="Nộp đáp án" submit={submit} /> : null}
 
       <div className="card stack">
         <div className="row between">
           <h2>Lời thoại</h2>
-          {unlocked ? (
+          {showText ? (
             <div className="row" style={{ gap: 10 }}>
               <Switch on={showPy} set={setShowPy} label="Pinyin" />
               <Switch on={showVi} set={setShowVi} label="Dịch" />
@@ -319,14 +267,9 @@ export default function LessonView({ id }: { id: string }) {
         </div>
 
         {!unlocked ? (
-          <>
-            <div className="lockmsg">Nghe trước, trả lời câu hỏi rồi mới xem lời thoại.</div>
-            <button className="btn ghost sm" onClick={skip}>
-              Bỏ qua, xem lời thoại (không tính nhiệm vụ)
-            </button>
-          </>
+          <div className="lockmsg">Nghe trước, trả lời câu hỏi rồi mới xem lời thoại, pinyin và bản dịch.</div>
         ) : (
-          <>
+          <RevealBlur open={showText} onOpen={() => setPeekText(true)} label="Bấm để mở lời thoại">
             <button className={'savebtn' + (saveMode ? ' on' : '')} onClick={() => { setSaveMode(!saveMode); setSel(null); }}>
               <span className="dotsw" />
               <span className="grow">
@@ -406,18 +349,18 @@ export default function LessonView({ id }: { id: string }) {
               </p>
             ) : null}
 
-            {!missionDone && listenedPct >= 80 ? (
+            {canClaim && !missionDone && listenedPct >= 80 ? (
               <button className="btn sm" onClick={claimMission}>
                 Tôi đã nghe đủ bài này, tính vào nhiệm vụ
               </button>
             ) : null}
-          </>
+          </RevealBlur>
         )}
       </div>
 
-      {unlocked && lesson.kind === 'DIALOG' ? <SuggestWords lessonId={id} /> : null}
+      {showText && lesson.kind === 'DIALOG' ? <SuggestWords lessonId={id} /> : null}
 
-      {unlocked ? (
+      {showText ? (
         <div className="card stack">
           <h2>Tra nghĩa từng từ</h2>
           <div className="tokl">

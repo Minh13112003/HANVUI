@@ -33,6 +33,30 @@ export function Pinyin({ text }: { text: string }) {
   );
 }
 
+function WordExtras({ usage, synonyms }: { usage?: string | null; synonyms?: { zh: string; pinyin: string; vi: string }[] }) {
+  if (!usage && !synonyms?.length) return null;
+  return (
+    <div className="card stack" style={{ gap: 8 }}>
+      {usage ? (
+        <div>
+          <b>Ngữ cảnh dùng</b>
+          <p style={{ fontSize: 14 }}>{usage}</p>
+        </div>
+      ) : null}
+      {synonyms?.length ? (
+        <div>
+          <b>Từ đồng nghĩa, gần nghĩa</b>
+          {synonyms.map((x) => (
+            <div key={x.zh} style={{ fontSize: 14 }}>
+              <span className="han">{x.zh}</span> <span className="py">{x.pinyin}</span> {x.vi}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId?: string }) {
   const { toast, closeSheet } = useUi();
   const [saving, setSaving] = useState(false);
@@ -134,6 +158,8 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
           </button>
         </div>
       ) : null}
+
+      {info ? <WordExtras usage={info.usage} synonyms={info.synonyms} /> : null}
 
       {info?.chars ? (
         <WordInsight data={{ mnemonic: info.mnemonic ?? null, colloc: info.colloc ?? null, chars: info.chars, compare: info.compare ?? [] }} />

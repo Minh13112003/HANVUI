@@ -1,5 +1,5 @@
 'use client';
-// Thanh chọn trong mục Học: Từ vựng và bốn kỹ năng (rule.md mục 3.5). Chỉ hiện ở trang gốc /hoc; trang kỹ năng dùng nút Quay lại.
+// Thanh chọn trong mục Học: Từ vựng, bốn kỹ năng và Dịch (rule.md mục 3.5). Chỉ hiện ở trang gốc /hoc; trang kỹ năng dùng nút Quay lại.
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,6 +9,7 @@ const ITEMS = [
   { href: '/hoc/noi', zh: '说', name: 'Nói' },
   { href: '/hoc/doc', zh: '读', name: 'Đọc' },
   { href: '/hoc/viet', zh: '写', name: 'Viết' },
+  { href: '/hoc/dich', zh: '译', name: 'Dịch' },
 ] as const;
 
 export default function SkillNav() {

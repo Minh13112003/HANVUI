@@ -53,9 +53,4 @@ export class ContentController {
     return this.content.submit(u.id, id, dto);
   }
 
-  @HttpCode(200)
-  @Post('lessons/:id/skip')
-  skip(@CurrentUser() u: AuthUser, @Param('id') id: string) {
-    return this.content.skip(u.id, id);
-  }
 }

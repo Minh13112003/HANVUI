@@ -309,7 +309,7 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(byId.get('cafe2')?.locked).toBe(false); // chứa từ khóa sự kiện nên không khóa
       const res = await request(http()).get('/api/v1/lessons/work-time').set(u.auth).expect(403);
       expect(res.body.message).toContain('HSK 2');
-      await request(http()).post('/api/v1/lessons/work-time/skip').set(u.auth).expect(403);
+      await request(http()).post('/api/v1/lessons/work-time/answers').set(u.auth).send({ answers: [] }).expect(403);
       // bài HSK 1 mới mở bình thường
       await request(http()).get('/api/v1/lessons/intro-name').set(u.auth).expect(200);
       // lên HSK 2 thì mở khóa
@@ -318,11 +318,11 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       await prisma.user.update({ where: { id: u.id }, data: { hskLevel: 1 } });
     });
 
-    it('gợi ý từ chỉ có sau khi xem lời thoại, và tiến độ từ vựng hợp lý', async () => {
+    it('gợi ý từ chỉ có sau khi trả lời xong, và tiến độ từ vựng hợp lý', async () => {
       const u = S;
-      await request(http()).get('/api/v1/lessons/intro-name').set(u.auth).expect(200);
+      const intro = await request(http()).get('/api/v1/lessons/intro-name').set(u.auth).expect(200);
       await request(http()).get('/api/v1/lessons/intro-name/suggest-words').set(u.auth).expect(403);
-      await request(http()).post('/api/v1/lessons/intro-name/skip').set(u.auth).expect(200);
+      await request(http()).post('/api/v1/lessons/intro-name/answers').set(u.auth).send({ answers: intro.body.questions.map(() => 0) }).expect(200);
       const r = await request(http()).get('/api/v1/lessons/intro-name/suggest-words').set(u.auth).expect(200);
       expect(Array.isArray(r.body.words)).toBe(true);
       expect(r.body.words.length).toBeLessThanOrEqual(8);
@@ -378,7 +378,7 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       const rec = list.body.points.filter((p: { recommended: boolean }) => p.recommended);
       expect(rec.length).toBeGreaterThan(0);
       expect(rec.every((p: { locked: boolean; level: number }) => !p.locked && p.level === 1)).toBe(true);
-      expect(list.body.levels.find((l: { level: number }) => l.level === 4)).toMatchObject({ locked: true });
+      expect(list.body.levels.find((l: { level: number }) => l.level === 4)).toMatchObject({ locked: false }); // HSK 4 đang mở cho mọi người;
       expect(list.body.readyForExam).toBe(false);
       const cats = new Set(list.body.points.map((p: { category: string }) => p.category));
       for (const c of ['Câu điều kiện', 'Mệnh đề quan hệ', 'Câu ước muốn', 'Câu tường thuật']) expect(cats.has(c)).toBe(true);
@@ -561,7 +561,97 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       const it2 = vz.body.find((x: { prompt: string }) => x.prompt === 'Bạn là bác sĩ à?');
       const z = await request(http()).post('/api/v1/translate/check').set(S.auth).send({ itemId: it2.id, direction: 'vi2zh', answer: '你是医生吗' }).expect(200);
       expect(z.body.exact).toBe(true);
-      await request(http()).get('/api/v1/translate/grammar/yuqi?direction=zh2vi').set(S.auth).expect(403); // HSK 4
+      await request(http()).get('/api/v1/translate/grammar/yuqi?direction=zh2vi').set(S.auth).expect(200); // HSK 4 đang mở cho mọi người
+    });
+
+    it('chưa trả lời không lộ pinyin, dịch; làm lại là ôn tập và ghi đè kết quả; đã bỏ nút bỏ qua', async () => {
+      const dialog = await signup(app, 'review');
+      made.push(dialog.id);
+      const read = (id: string) => request(http()).get('/api/v1/lessons/' + id).set(dialog.auth).expect(200);
+      const send = (id: string, answers: number[]) => request(http()).post('/api/v1/lessons/' + id + '/answers').set(dialog.auth).send({ answers }).expect(200);
+      await request(http()).post('/api/v1/lessons/intro-name/skip').set(dialog.auth).expect(404);
+
+      const fresh = await read('doc-ngay');
+      expect(fresh.body.lines[0].zh).toBeTruthy();
+      expect(fresh.body.lines[0].pinyin).toBeUndefined();
+      expect(fresh.body.lines[0].vi).toBeUndefined();
+      expect(JSON.stringify(fresh.body.lines[0].tokens)).not.toMatch(/"[pv]":/);
+      expect(fresh.body.questions[0].answer).toBeUndefined();
+      await request(http()).get('/api/v1/lessons/doc-ngay/suggest-words').set(dialog.auth).expect(403);
+
+      const talk = await read('intro-name');
+      expect(talk.body.lines[0].zh).toBeUndefined();
+      const wrong = talk.body.questions.map(() => 0);
+      await send('intro-name', wrong);
+      const again = await read('intro-name');
+      expect(again.body.progress.allDone).toBe(true);
+      expect(again.body.lines[0].pinyin).toBeTruthy();
+      expect(again.body.questions[0].lastPicked).toBe(0);
+      const right = again.body.questions.map((q: { answer: number }) => q.answer);
+      await send('intro-name', right);
+      const after = await read('intro-name');
+      expect(after.body.progress.correct).toBe(right.length);
+      expect(after.body.questions.map((q: { lastPicked: number }) => q.lastPicked)).toEqual(right);
+      const list = await request(http()).get('/api/v1/lessons?level=1').set(dialog.auth).expect(200);
+      expect(list.body.find((l: { id: string }) => l.id === 'intro-name').status).toBe('done');
+    });
+
+    it('HSK 4: bài nghe không lộ câu hỏi, 4 đáp án, mở cho mọi người; sổ từ chủ đề lưu từng từ và lưu hết', async () => {
+      const v = await signup(app, 'hsk4');
+      made.push(v.id);
+      const http4 = (p: string) => request(http()).get('/api/v1' + p).set(v.auth);
+      const list = await http4('/lessons?level=4').expect(200);
+      expect(list.body.length).toBeGreaterThanOrEqual(6);
+      expect(list.body.every((l: { locked: boolean }) => !l.locked)).toBe(true);
+      const l = await http4('/lessons/hsk4-ai').expect(200);
+      expect(l.body.lines[0].zh).toBeUndefined();
+      expect(l.body.questions[0].prompt).toBe('Chọn đáp án câu 1');
+      expect(l.body.questions[0].promptVi).toBeUndefined();
+      expect(l.body.questions.every((q: { options: string[] }) => q.options.length === 4)).toBe(true);
+      await request(http()).post('/api/v1/lessons/hsk4-ai/answers').set(v.auth).send({ answers: l.body.questions.map(() => 0) }).expect(200);
+      const done = await http4('/lessons/hsk4-ai').expect(200);
+      expect(done.body.lines.at(-1).zh).toContain('题');
+      expect(done.body.questions[0].promptVi).toContain('？');
+
+      const topics = await http4('/core-topics').expect(200);
+      expect(topics.body.map((t: { id: string }) => t.id)).toEqual(['ai', 'cong-nghe', 'cong-nghiep', 'xay-dung', 'logistics', 'chinh-tri']);
+      const ai = await http4('/core-topics/ai').expect(200);
+      expect(Object.keys(ai.body.words[0]).sort()).toEqual(['id', 'pinyin', 'saved', 'vi', 'zh']);
+      const first = ai.body.words[0];
+      const one = await request(http()).post('/api/v1/core-topics/ai/save').set(v.auth).send({ wordIds: [first.id] }).expect(200);
+      expect(one.body.added).toBe(1);
+      const all = await request(http()).post('/api/v1/core-topics/ai/save').set(v.auth).send({}).expect(200);
+      expect(all.body.added).toBe(ai.body.words.length - 1);
+      expect((await http4('/core-topics').expect(200)).body[0].saved).toBe(ai.body.words.length);
+      const w = await http4('/words/lookup?zh=' + encodeURIComponent('数据')).expect(200);
+      expect(w.body.usage).toBeTruthy();
+      expect(w.body.synonyms.length).toBeGreaterThan(0);
+      expect(w.body.example.zh).toContain('数据');
+      const speak = await http4('/core-topics/ai/speak').expect(200);
+      expect(speak.body.words[0].example.zh).toBeTruthy();
+      await http4('/core-topics/khong-co').expect(404);
+    });
+
+    it('mục Luyện dịch: đề không lộ đáp án, Hiện dịch, chấm thứ tự, khóa theo cấp', async () => {
+      const list = await request(http()).get('/api/v1/translate/sentences?direction=zh2vi&level=1').set(S.auth).expect(200);
+      expect(list.body.items.length).toBeGreaterThanOrEqual(8);
+      expect(JSON.stringify(list.body)).not.toContain('Thời tiết hôm qua không');
+      expect(JSON.stringify(list.body)).not.toContain('accept');
+      const q = list.body.items.find((x: { prompt: string }) => x.prompt === '昨天的天气不太好。');
+      const check = (direction: string, answer: string) => request(http()).post('/api/v1/translate/sentences/check').set(S.auth).send({ sentenceId: q.id, direction, answer }).expect(200);
+      const ok = await check('zh2vi', 'Thời tiết hôm qua không tốt lắm');
+      expect(ok.body.verdict).toBe('ok');
+      expect(ok.body.reference.natural.length).toBeGreaterThan(1);
+      expect((await check('zh2vi', 'Hôm qua thời tiết không lắm tốt')).body.verdict).toBe('order');
+      expect((await check('zh2vi', 'Thời tiết không tốt')).body.missing[0].zh).toBeTruthy();
+      expect((await check('vi2zh', '昨天的天气不太好')).body.verdict).toBe('ok');
+      const again = await request(http()).get('/api/v1/translate/sentences?direction=zh2vi&level=1').set(S.auth).expect(200);
+      expect(again.body.items.find((x: { id: number }) => x.id === q.id).correct).toBe(true);
+      const reveal = await request(http()).get(`/api/v1/translate/sentences/${q.id}/reveal`).set(S.auth).expect(200);
+      expect(reveal.body.vi).toContain('Thời tiết');
+      const high = await request(http()).get('/api/v1/translate/sentences?direction=zh2vi&level=3').set(S.auth).expect(200);
+      expect(high.body.locked).toBe(true);
+      expect(high.body.items).toEqual([]);
     });
 
     it('tra từ có phần nhớ chữ: tách chữ (chỉ nghĩa/chỉ âm), cách nhớ, cụm từ, từ dễ nhầm; từ để viết từ trí nhớ', async () => {

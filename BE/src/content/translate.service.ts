@@ -1,10 +1,15 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { pinyin } from 'pinyin-pro';
-import { equivHsk2 } from '../common/hsk.js';
+import { equivHsk2, OPEN_LEVEL } from '../common/hsk.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { gradeVi2Zh, gradeZh2Vi, type Chunk } from './translate.grade.js';
+import { gradeSentenceVi, gradeSentenceZh, gradeVi2Zh, gradeZh2Vi, type Chunk } from './translate.grade.js';
 
 export type Direction = 'zh2vi' | 'vi2zh';
+export interface SentenceToken {
+  zh: string;
+  py: string;
+  vi: string;
+}
 
 const shuffle = <T>(a: T[]): T[] => {
   const r = [...a];
@@ -32,7 +37,7 @@ export class TranslateService {
   async forGrammar(userId: string, slug: string, direction: Direction) {
     const g = await this.prisma.grammarPoint.findUnique({ where: { slug }, select: { id: true, level: true } });
     if (!g) throw new NotFoundException('Không có điểm ngữ pháp này');
-    if (g.level > (await this.userLevel(userId))) throw new ForbiddenException(`Điểm ngữ pháp này thuộc HSK ${g.level}.`);
+    if (g.level !== OPEN_LEVEL && g.level > (await this.userLevel(userId))) throw new ForbiddenException(`Điểm ngữ pháp này thuộc HSK ${g.level}.`);
     const rows = await this.prisma.translateItem.findMany({
       where: { grammarId: g.id },
       orderBy: { sort: 'asc' },
@@ -51,7 +56,7 @@ export class TranslateService {
   private async item(userId: string, itemId: number) {
     const r = await this.prisma.translateItem.findUnique({ where: { id: itemId }, include: { grammar: { select: { level: true } } } });
     if (!r) throw new NotFoundException('Không có câu này');
-    if (r.grammar.level > (await this.userLevel(userId))) throw new ForbiddenException('Câu này chưa mở với cấp của bạn');
+    if (r.grammar.level !== OPEN_LEVEL && r.grammar.level > (await this.userLevel(userId))) throw new ForbiddenException('Câu này chưa mở với cấp của bạn');
     return r;
   }
 
@@ -88,5 +93,73 @@ export class TranslateService {
     if (!prev) throw new BadRequestException('Hãy nộp câu dịch trước rồi mới tự đánh giá');
     await this.prisma.translateDone.update({ where: { id: prev.id }, data: { correct: true, self: true } });
     return { ok: true };
+  }
+
+  // ── Mục Luyện dịch (tab Học): đáp án và sơ đồ mũi tên chỉ trả khi người học chấm hoặc tự bấm Hiện dịch ──
+
+  async sentences(userId: string, direction: Direction, level?: number) {
+    const mine = await this.userLevel(userId);
+    const rows = await this.prisma.translateSentence.findMany({
+      orderBy: [{ level: 'asc' }, { sort: 'asc' }],
+      include: { done: { where: { userId, direction } } },
+    });
+    const levels = [...new Set(rows.map((r) => r.level))].map((l) => {
+      const of = rows.filter((r) => r.level === l);
+      return { level: l, total: of.length, correct: of.filter((r) => r.done[0]?.correct).length, locked: l > mine };
+    });
+    const open = levels.filter((l) => !l.locked).map((l) => l.level);
+    const want = level ?? (open.length ? Math.max(...open) : (levels[0]?.level ?? 1));
+    const locked = want > mine;
+    const items = locked
+      ? []
+      : rows
+          .filter((r) => r.level === want)
+          .map((r) => {
+            const tokens = r.tokens as unknown as SentenceToken[];
+            return {
+              id: r.id,
+              title: r.title,
+              prompt: direction === 'zh2vi' ? r.zh : r.vi,
+              pinyin: direction === 'zh2vi' ? tokens.map((t) => t.py).join(' ') : null,
+              tiles: direction === 'vi2zh' ? shuffle(tokens.map((t) => t.zh)) : null,
+              correct: !!r.done[0]?.correct,
+            };
+          });
+    return { level: want, locked, levels, items };
+  }
+
+  private async sentence(userId: string, id: number) {
+    const r = await this.prisma.translateSentence.findUnique({ where: { id } });
+    if (!r) throw new NotFoundException('Không có câu này');
+    if (r.level > (await this.userLevel(userId))) throw new ForbiddenException(`Câu này thuộc HSK ${r.level}.`);
+    return r;
+  }
+
+  private diagram(r: { zh: string; vi: string; note: string; tokens: unknown; natural: unknown }) {
+    return { zh: r.zh, vi: r.vi, note: r.note, tokens: r.tokens as SentenceToken[], natural: r.natural as { vi: string; at: number }[] };
+  }
+
+  async reveal(userId: string, id: number) {
+    return this.diagram(await this.sentence(userId, id));
+  }
+
+  async checkSentence(userId: string, sentenceId: number, direction: Direction, answer: string) {
+    const r = await this.sentence(userId, sentenceId);
+    const tokens = r.tokens as unknown as SentenceToken[];
+    const g =
+      direction === 'zh2vi'
+        ? gradeSentenceVi(answer, { accept: r.accept as string[][], optional: r.optional, filler: r.filler, orders: r.orders as number[][] })
+        : gradeSentenceZh(answer, r.zh, r.alt, tokens.map((t) => t.zh));
+    if (g.verdict === 'empty') throw new BadRequestException('Bạn chưa nhập câu dịch');
+    const correct = g.verdict === 'ok';
+    const where = { userId_sentenceId_direction: { userId, sentenceId, direction } };
+    const prev = await this.prisma.translateSentenceDone.findUnique({ where });
+    await this.prisma.translateSentenceDone.upsert({
+      where,
+      create: { userId, sentenceId, direction, correct },
+      // Đã đúng rồi thì làm lại sai không xóa thành tích.
+      update: { correct: correct || !!prev?.correct, attempts: { increment: 1 } },
+    });
+    return { verdict: g.verdict, correct, extra: g.extra, missing: g.missing.map((i) => ({ zh: tokens[i].zh, vi: tokens[i].vi })), reference: this.diagram(r) };
   }
 }

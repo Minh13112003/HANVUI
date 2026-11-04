@@ -16,7 +16,7 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
   // Trang gốc của 5 tab không cần nút Quay lại; mọi trang con có (về trang trước, không có lịch sử thì về tab cha).
   const isRoot = ['/', '/hoc', '/so-tay', '/su-kien', '/them'].includes(path);
   const goBack = () => {
-    if (/^\/hoc\/(nghe|noi|doc|viet)$/.test(path)) router.push('/hoc');
+    if (/^\/hoc\/(nghe|noi|doc|viet|dich)$/.test(path)) router.push('/hoc');
     else if (window.history.length > 1) router.back();
     else router.push('/' + (path.split('/')[1] ?? ''));
   };

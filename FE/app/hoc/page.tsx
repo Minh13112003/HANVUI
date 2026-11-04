@@ -36,6 +36,15 @@ export default function VocabTopicsPage() {
           </span>
         </section>
 
+        <Link href="/hoc/chu-de" className="topic">
+          <span className="big han">专</span>
+          <span className="grow">
+            <b>Từ vựng chuyên ngành</b>
+            <small style={{ display: 'block' }}>AI, Công nghệ, Công nghiệp, Xây dựng, Logistics, Chính trị</small>
+          </span>
+          <span className="chev">›</span>
+        </Link>
+
         {topics === null ? <p className="muted">Đang tải…</p> : null}
         {topics?.map((t) => (
           <Link key={t.id} href={'/hoc/tu-vung/' + t.id} className="topic">

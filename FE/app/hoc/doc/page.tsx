@@ -1,8 +1,10 @@
 'use client';
-// Kỹ năng Đọc (rule.md mục 3.5): bài đọc theo cấp HSK. Chữ hiện ngay (khác hội thoại), chạm từng từ để xem nghĩa
-// và lưu, có câu hỏi hiểu bài tự chấm. Bài cấp cao hơn cấp người học bị khóa. Bài đọc không có âm thanh.
+// Kỹ năng Đọc (rule.md mục 3.5): bài đọc theo cấp HSK. Chữ Hán hiện ngay; trả lời xong mới có pinyin, bản dịch và nghĩa
+// từng từ (trước đó chạm từ chỉ để lưu). Bài đã hoàn thành mở lại là ôn tập: pinyin và dịch làm mờ, bấm hoặc làm xong mới mở. Bài cấp cao hơn cấp người học bị khóa. Bài đọc không có âm thanh.
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
+import LessonQuiz from '@/components/LessonQuiz';
+import SaveWordSheet from '@/components/SaveWordSheet';
 import Shell from '@/components/Shell';
 import SuggestWords from '@/components/SuggestWords';
 import WordSheet from '@/components/WordSheet';
@@ -20,12 +22,12 @@ export default function ReadPage() {
   const [err, setErr] = useState('');
   const [showVi, setShowVi] = useState(false);
   const [showPy, setShowPy] = useState(true);
-  const [picks, setPicks] = useState<number[]>([]);
-  const [result, setResult] = useState<AnswerResult | null>(null);
+  const [review, setReview] = useState(false);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([1, 2, 3].map((n) => api<LessonCard[]>('/lessons?level=' + n + '&kind=READING')))
+    Promise.all([1, 2, 3, 4].map((n) => api<LessonCard[]>('/lessons?level=' + n + '&kind=READING')))
       .then((r) => setCards(r.flat()))
       .catch(() => setCards([]));
   }, [user]);
@@ -33,7 +35,10 @@ export default function ReadPage() {
   const load = useCallback(async (id: string) => {
     setErr('');
     setLesson(null);
-    setResult(null);
+    setReview(false);
+    setOpened(false);
+    setShowPy(true);
+    setShowVi(false);
     setOpen(id);
     requestAnimationFrame(() =>
       document.getElementById('read-' + id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
@@ -41,38 +46,48 @@ export default function ReadPage() {
     try {
       const l = await api<Lesson>('/lessons/' + id);
       setLesson(l);
-      setPicks(new Array(l.questions.length).fill(-1));
+      setReview(l.progress.allDone && l.questions.length > 0);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Không mở được bài');
     }
   }, []);
 
-  const submit = async () => {
-    if (!lesson) return;
-    try {
-      const r = await api<AnswerResult>('/lessons/' + lesson.id + '/answers', { method: 'POST', body: { answers: picks, listenedPct: 0 } });
-      setResult(r);
-      setLesson(await api<Lesson>('/lessons/' + lesson.id));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Không chấm được');
+  const open2 = () => {
+    setOpened(true);
+    setShowPy(true);
+    setShowVi(true);
+  };
+
+  const submit = async (answers: number[]) => {
+    if (!lesson) throw new Error('Chưa mở bài');
+    const r = await api<AnswerResult>('/lessons/' + lesson.id + '/answers', { method: 'POST', body: { answers, listenedPct: 0 } });
+    if (review) {
+      open2();
+      setLesson({ ...lesson, progress: { ...lesson.progress, correct: r.correct } });
     }
+    else setLesson(await api<Lesson>('/lessons/' + lesson.id));
+    setCards((cs) => cs?.map((c) => (c.id === lesson.id ? { ...c, status: 'done' } : c)) ?? cs);
+    return r;
   };
 
   const toggle = (id: string) => {
     if (open === id) {
       setOpen('');
       setLesson(null);
-      setResult(null);
       return;
     }
     load(id);
   };
 
-  const answered = !!result || !!lesson?.progress.allDone;
+  const answered = !!lesson?.progress.allDone;
+  const blurred = answered && review && !opened; // ôn tập: pinyin và dịch làm mờ
+  const canLook = answered && !blurred;
+  const py = blurred || (canLook && showPy);
+  const vi = blurred || (canLook && showVi);
 
   const reader = lesson ? (
           <>
-            <div className="card reader stack">
+            <div className={'card reader stack' + (blurred ? ' rv-blur' : '')}>
               <div className="row between">
                 <div>
                   <h2 className="han">{lesson.situation}</h2>
@@ -81,16 +96,32 @@ export default function ReadPage() {
                   </small>
                 </div>
               </div>
-              <div className="row" style={{ gap: 12 }}>
-                <span className="sw">
-                  <button className={showPy ? 'on' : ''} role="switch" aria-checked={showPy} aria-label="Pinyin" onClick={() => setShowPy(!showPy)} />
-                  Pinyin
-                </span>
-                <span className="sw">
-                  <button className={showVi ? 'on' : ''} role="switch" aria-checked={showVi} aria-label="Bản dịch" onClick={() => setShowVi(!showVi)} />
-                  Bản dịch
-                </span>
-              </div>
+              {answered && lesson.questions.length ? (
+                <div className="donebar">
+                  <b>
+                    ✓ Đã hoàn thành · Đúng {lesson.progress.correct}/{lesson.questions.length} câu
+                  </b>
+                  {blurred ? <span>Bạn đang ôn lại. Làm xong, kết quả mới sẽ ghi đè kết quả cũ.</span> : null}
+                </div>
+              ) : null}
+              {!answered ? (
+                <p className="lockmsg">Trả lời xong câu hỏi mới xem được pinyin và bản dịch. Chạm một từ để lưu vào Sổ tay.</p>
+              ) : blurred ? (
+                <button type="button" className="btn sm" onClick={open2}>
+                  Bấm để mở pinyin và bản dịch
+                </button>
+              ) : (
+                <div className="row" style={{ gap: 12 }}>
+                  <span className="sw">
+                    <button className={showPy ? 'on' : ''} role="switch" aria-checked={showPy} aria-label="Pinyin" onClick={() => setShowPy(!showPy)} />
+                    Pinyin
+                  </span>
+                  <span className="sw">
+                    <button className={showVi ? 'on' : ''} role="switch" aria-checked={showVi} aria-label="Bản dịch" onClick={() => setShowVi(!showVi)} />
+                    Bản dịch
+                  </span>
+                </div>
+              )}
               {lesson.lines.map((l) => (
                 <div className="sent" key={l.idx}>
                   <div className="tkrow">
@@ -100,58 +131,25 @@ export default function ReadPage() {
                           {t.t}
                         </span>
                       ) : (
-                        <button className="tk" key={ti} onClick={() => openSheet(<WordSheet word={{ zh: t.t, pinyin: t.p, vi: t.v }} lessonId={lesson.id} />)}>
-                          {showPy ? <span className="tkp">{t.p}</span> : null}
+                        <button
+                          className="tk"
+                          key={ti}
+                          onClick={() => openSheet(canLook ? <WordSheet word={{ zh: t.t, pinyin: t.p, vi: t.v }} lessonId={lesson.id} /> : <SaveWordSheet zh={t.t} lessonId={lesson.id} />)}
+                        >
+                          {py ? <span className="tkp">{t.p}</span> : null}
                           <span className="tkz han">{t.t}</span>
                         </button>
                       ),
                     )}
                   </div>
-                  {showVi ? <p className="tr muted">{l.vi}</p> : null}
+                  {vi ? <p className="tr muted">{l.vi}</p> : null}
                 </div>
               ))}
             </div>
 
-            <div className="card stack">
-              <h2>Câu hỏi hiểu bài</h2>
-              {lesson.questions.map((q, qi) => (
-                <div className="q" key={q.idx}>
-                  <div className="hq">
-                    {q.prompt}
-                    {answered && q.promptVi ? <span className="t2">{q.promptVi}</span> : null}
-                  </div>
-                  <div className="optgrid">
-                    {q.options.map((o, oi) => {
-                      const r = result?.results[qi];
-                      const cls = r ? (oi === r.answer ? ' ok' : r.picked === oi ? ' no' : '') : '';
-                      return (
-                        <button
-                          key={oi}
-                          className={'opt' + cls}
-                          disabled={!!result}
-                          onClick={() => setPicks((p) => p.map((x, k) => (k === qi ? oi : x)))}
-                          style={!result && picks[qi] === oi ? { borderColor: 'var(--accent)' } : undefined}
-                        >
-                          <span className="han">{o}</span>
-                          {answered && q.optionsVi ? <span className="t2">{q.optionsVi[oi]}</span> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {result ? (
-                <div className="alert" style={{ borderColor: 'var(--good)', background: 'var(--goodbg)' }}>
-                  Đúng {result.correct}/{result.total} câu.
-                </div>
-              ) : (
-                <button className="btn primary" disabled={picks.some((p) => p < 0)} onClick={submit}>
-                  Kiểm tra
-                </button>
-              )}
-            </div>
+            <LessonQuiz key={lesson.id} questions={lesson.questions} review={review} title="Câu hỏi hiểu bài" submitLabel="Kiểm tra" submit={submit} />
 
-            <SuggestWords lessonId={lesson.id} />
+            {canLook ? <SuggestWords lessonId={lesson.id} /> : null}
           </>
   ) : null;
 

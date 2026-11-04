@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { equivHsk2 } from '../common/hsk.js';
+import { equivHsk2, OPEN_LEVEL } from '../common/hsk.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { WritingService } from './writing.service.js';
 
@@ -44,7 +44,7 @@ export class GrammarService {
     );
     const levels = [...new Set(rows.map((r) => r.p.level))].sort((a, b) => a - b).map((lv) => {
       const rs = rows.filter((r) => r.p.level === lv);
-      return { level: lv, total: rs.length, mastered: rs.filter((r) => r.mastered).length, locked: lv > eq };
+      return { level: lv, total: rs.length, mastered: rs.filter((r) => r.mastered).length, locked: lv > eq && lv !== OPEN_LEVEL };
     });
     return {
       level: eq,
@@ -57,7 +57,7 @@ export class GrammarService {
         title: p.title,
         pattern: p.pattern,
         icon: (p.visual as { icons?: string[] } | null)?.icons?.[0] ?? null,
-        locked: p.level > eq,
+        locked: p.level > eq && p.level !== OPEN_LEVEL,
         // Độ phù hợp với cấp người học: ôn lại (cấp thấp hơn) · đúng cấp · cấp kế (sắp tới) · còn xa.
         fit: p.level < eq ? 'review' : p.level === eq ? 'match' : p.level === eq + 1 ? 'next' : 'far',
         recommended: recommended.has(p.slug),
@@ -71,7 +71,7 @@ export class GrammarService {
     const p = await this.prisma.grammarPoint.findUnique({ where: { slug } });
     if (!p) throw new NotFoundException('Không có điểm ngữ pháp này');
     const eq = await this.level(userId);
-    if (p.level > eq) throw new ForbiddenException(`Điểm ngữ pháp này thuộc HSK ${p.level}. Hãy lên cấp HSK ${p.level} để mở khóa.`);
+    if (p.level > eq && p.level !== OPEN_LEVEL) throw new ForbiddenException(`Điểm ngữ pháp này thuộc HSK ${p.level}. Hãy lên cấp HSK ${p.level} để mở khóa.`);
     return {
       slug: p.slug,
       level: p.level,

@@ -7,3 +7,6 @@ export const HSK3_TO_HSK2 = [2, 3, 4, 5, 6, 6, 6, 6, 6];
 
 export const equivHsk2 = (standard: 'HSK2' | 'HSK3', level: number): number =>
   standard === 'HSK3' ? (HSK3_TO_HSK2[Math.min(Math.max(level, 1), 9) - 1] ?? 6) : Math.min(Math.max(level, 1), 6);
+
+/** Cấp nội dung đang mở cho mọi người, không cần thi lên cấp (rule.md mục 8). */
+export const OPEN_LEVEL = 4;

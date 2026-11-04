@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { equivHsk2 } from '../common/hsk.js';
+import { equivHsk2, OPEN_LEVEL } from '../common/hsk.js';
 import { fold } from '../common/text.js';
 import { Clock, vnDay } from '../common/time.js';
 import { EventService } from '../event/event.service.js';
@@ -20,7 +20,7 @@ export const HSK2_TARGET = [150, 300, 600, 1200, 2500, 5000];
  * rule.md 5.3 cho mọi cấp dò được từ khóa nên các bài đó không khóa.
  */
 const isLocked = (lesson: { kind: string; level: number; _count?: { keySlots: number } }, userLevel: number) =>
-  (lesson.kind === 'DIALOG' || lesson.kind === 'READING') && lesson.level > userLevel && !(lesson._count?.keySlots ?? 0);
+  (lesson.kind === 'DIALOG' || lesson.kind === 'READING') && lesson.level > userLevel && lesson.level !== OPEN_LEVEL && !(lesson._count?.keySlots ?? 0);
 
 @Injectable()
 export class ContentService {
@@ -107,7 +107,8 @@ export class ContentService {
     await this.assertUnlocked(userId, lesson);
     const progress = await this.prisma.userLesson.findUnique({ where: { userId_lessonId: { userId, lessonId: id } } });
     // Bài đọc luôn hiện chữ ngay; hội thoại khóa lời thoại tới khi trả lời xong (rule.md 3.2).
-    const unlocked = lesson.kind === 'READING' || !!progress?.transcript;
+    const done = !!progress?.allDone;
+    const unlocked = lesson.kind === 'READING' || done;
     if (!progress) await this.prisma.userLesson.create({ data: { userId, lessonId: id } });
     const answered = !!progress?.answers;
 
@@ -132,12 +133,15 @@ export class ContentService {
         avatarUrl: mediaUrl(r.avatarId, 'chat'),
       })),
       // Chưa mở lời thoại: chỉ trả khung để phát âm thanh, không có chữ.
+      // Bài đọc chưa trả lời xong: chỉ có chữ Hán, không gửi pinyin và nghĩa.
       lines: lesson.lines.map((l) =>
-        unlocked
+        done
           ? { idx: l.idx, who: l.who, zh: l.zh, pinyin: l.pinyin, vi: l.vi, tokens: l.tokens, audioKey: l.audioKey }
-          : { idx: l.idx, who: l.who, audioKey: l.audioKey },
+          : unlocked
+            ? { idx: l.idx, who: l.who, zh: l.zh, tokens: (l.tokens as unknown as { t: string; x?: boolean }[]).map((t) => ({ t: t.t, x: t.x })), audioKey: l.audioKey }
+            : { idx: l.idx, who: l.who, audioKey: l.audioKey },
       ),
-      questions: lesson.questions.map((q) => {
+      questions: lesson.questions.map((q, i) => {
         const opts = q.options as unknown as Opt[];
         return {
           idx: q.idx,
@@ -145,10 +149,12 @@ export class ContentService {
           prompt: q.prompt,
           options: opts.map((o) => o.zh),
           // Bản dịch chỉ gửi sau khi đã trả lời (rule.md 3.2).
+          // Bài đã hoàn thành mở lại là ôn tập: gửi đáp án và lựa chọn lần trước để hiện làm mờ.
           ...(answered ? { promptVi: q.promptVi, optionsVi: opts.map((o) => o.vi) } : {}),
+          ...(done ? { answer: q.answer, lastPicked: (progress?.answers as number[] | null)?.[i] ?? null } : {}),
         };
       }),
-      progress: { transcript: unlocked, allDone: !!progress?.allDone, correct: progress?.correct ?? 0 },
+      progress: { transcript: unlocked, allDone: done, correct: progress?.correct ?? 0 },
     };
   }
 
@@ -194,19 +200,6 @@ export class ContentService {
     return { correct, total: results.length, results, mission };
   }
 
-  /** "Bỏ qua, xem lời thoại": mở lời thoại nhưng bài không tính nhiệm vụ trong ngày. */
-  async skip(userId: string, id: string) {
-    const lesson = await this.prisma.lesson.findUnique({ where: { id }, include: { _count: { select: { keySlots: true } } } });
-    if (!lesson || !lesson.published) throw new NotFoundException('Không có bài này');
-    await this.assertUnlocked(userId, lesson);
-    const today = vnDay(this.clock.now()).key;
-    await this.prisma.userLesson.upsert({
-      where: { userId_lessonId: { userId, lessonId: id } },
-      create: { userId, lessonId: id, transcript: true, skippedDay: today },
-      update: { transcript: true, skippedDay: today },
-    });
-    return { transcript: true };
-  }
   private async assertUnlocked(userId: string, lesson: { kind: string; level: number; _count?: { keySlots: number } }) {
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
     if (isLocked(lesson, equivHsk2(me.hskStandard, me.hskLevel))) {
@@ -255,7 +248,7 @@ export class ContentService {
     if (!lesson || !lesson.published) throw new NotFoundException('Không có bài này');
     await this.assertUnlocked(userId, lesson);
     const progress = await this.prisma.userLesson.findUnique({ where: { userId_lessonId: { userId, lessonId: id } } });
-    if (lesson.kind !== 'READING' && !progress?.transcript) throw new ForbiddenException('Xem lời thoại rồi mới có gợi ý từ');
+    if (!progress?.allDone) throw new ForbiddenException('Trả lời xong câu hỏi rồi mới có gợi ý từ');
 
     const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { hskLevel: true, hskStandard: true } });
     const banned = new Set(lesson.keySlots.map((k) => k.slot.word.zh));
@@ -319,6 +312,8 @@ export class ContentService {
       savedId: saved?.id ?? null,
       mnemonic: word?.mnemonic ?? null,
       colloc: word?.colloc ?? null,
+      usage: word?.usage ?? null,
+      synonyms: word?.synonyms ?? [],
       chars: chars.map((c) => {
         const h = byCh.get(c);
         if (!h) return { ch: c, pinyin: '', vi: null, kind: null, parts: [] };

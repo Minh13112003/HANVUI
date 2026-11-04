@@ -84,6 +84,9 @@ export interface Question {
   options: string[];
   promptVi?: string;
   optionsVi?: string[];
+  /** Chỉ có khi bài đã hoàn thành (ôn tập). */
+  answer?: number;
+  lastPicked?: number | null;
 }
 
 export interface Lesson {
