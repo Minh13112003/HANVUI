@@ -1064,3 +1064,241 @@ body {
   white-space: nowrap;
   min-height: 70px;
 }
+
+/* Mức sẵn sàng + Kiểm tra từ vựng */
+.rd-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+.rd-t {
+  font-size: 20px;
+}
+.rd-pill {
+  background: var(--surface2);
+  color: var(--heading);
+  font-weight: 800;
+}
+.rd-pill.ok {
+  background: var(--goodbg);
+  color: var(--good);
+}
+.rd-row {
+  display: grid;
+  gap: 6px;
+}
+.rd-l {
+  color: var(--muted);
+  font-size: 14px;
+}
+.rd-v {
+  color: var(--accent);
+}
+.rd-v.ok {
+  color: var(--good);
+}
+.rd-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.rd-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.rd-bar i.ok {
+  background: var(--good);
+}
+.rd-bar u {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--fg);
+  opacity: 0.35;
+  text-decoration: none;
+}
+.kt-h {
+  font-weight: 800;
+  font-size: 16px;
+}
+.kt-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kt-chip {
+  min-height: 46px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-weight: 700;
+}
+.kt-chip.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.kt-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.kt-mode {
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-weight: 700;
+}
+.kt-mode.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Làm đề / trắc nghiệm */
+.optgrid {
+  gap: 10px;
+}
+.optgrid .opt {
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  min-height: 56px;
+  text-align: left;
+}
+.optgrid .opt .row > b.muted {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 14px;
+}
+.card.sticky {
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.btn.primary[disabled] {
+  opacity: 0.55;
+}
+
+/* Lộ trình: các giai đoạn nối bằng đường dọc */
+.lt .stg {
+  position: relative;
+  margin-left: 14px;
+  border-radius: 22px;
+}
+.lt .stg::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 28px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--line);
+  transform: translateX(-50%);
+}
+.lt .stg.cur::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 5px var(--surface2);
+}
+.lt .stg.done::before {
+  background: var(--good);
+}
+.lt .stg:not(:last-of-type)::after {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 42px;
+  bottom: -26px;
+  width: 2px;
+  background: var(--line);
+  transform: translateX(-50%);
+}
+.lt details.card {
+  border: 0;
+  background: var(--surface2);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+/* Câu hỏi trắc nghiệm trong bài Nghe/Đọc: chữ A, B, C trong vòng tròn */
+.optgrid {
+  counter-reset: opt;
+}
+.q .optgrid .opt {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+}
+.q .optgrid .opt::before {
+  counter-increment: opt;
+  content: counter(opt, upper-alpha);
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 14px;
+}
+.q .optgrid .opt.ok {
+  background: var(--goodbg);
+  box-shadow: inset 0 0 0 2px var(--good);
+}
+.q .optgrid .opt.no {
+  background: var(--badbg);
+  box-shadow: inset 0 0 0 2px var(--bad);
+}
+.q .optgrid .opt.ok::before {
+  background: var(--good);
+  color: #fff;
+}
+.q .optgrid .opt.no::before {
+  background: var(--bad);
+  color: #fff;
+}
+.steps li {
+  border-radius: 999px;
+  padding: 7px 10px;
+}
+.steps li.cur {
+  background: var(--accent);
+  color: var(--accent-fg);
+  box-shadow: none;
+}
+.steps li.cur b {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: transparent;
+}
+.q .optgrid .opt.sel {
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.q .optgrid .opt.sel::before {
+  background: var(--accent);
+  color: var(--accent-fg);
+}

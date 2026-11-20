@@ -105,7 +105,7 @@ export default function PathPage() {
 
   return (
     <Shell title="Lộ trình">
-      <div className="stack">
+      <div className="stack lt">
         <section className="surf" data-g="night">
           <span className="wm" aria-hidden="true">
             路
@@ -118,7 +118,7 @@ export default function PathPage() {
                 Từ số 0 đến HSK 2
               </div>
               <span className="hsub">
-                Nhập môn → HSK 1 → HSK 2 · {doneCount}/{all.length} bước. Cứ làm theo bước đang sáng, bấm "Làm ngay" là tới đúng chỗ.
+                {doneCount}/{all.length} bước
               </span>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function PathPage() {
           const n = steps.filter((x) => x.p.done).length;
           const isOpen = curStage === st.id;
           return (
-            <section key={st.id} className="card stack" style={{ gap: 10 }}>
+            <section key={st.id} className={'card stack stg' + (n === st.steps.length ? ' done' : isOpen ? ' cur' : '')} style={{ gap: 10 }}>
               <button
                 className="row"
                 onClick={() => setOpen(isOpen ? '' : st.id)}
@@ -188,11 +188,6 @@ export default function PathPage() {
                         <li key={d}>{d}</li>
                       ))}
                     </ul>
-                    {st.id === 'hsk2' ? (
-                      <small className="muted" style={{ display: 'block', marginTop: 6 }}>
-                        Bài HSK 2 mở khi bạn thi đạt đề HSK 1.
-                      </small>
-                    ) : null}
                   </div>
 
                   {steps.map(({ s, p }) => {
@@ -251,9 +246,6 @@ export default function PathPage() {
                               </button>
                             ) : null}
                           </div>
-                          {s.auto && s.auto.kind !== 'intro' ? (
-                            <small className="muted">Bước này tự đánh dấu khi đạt mức trên; bạn cũng có thể tự đánh dấu.</small>
-                          ) : null}
                         </div>
                       </details>
                     );
@@ -264,10 +256,6 @@ export default function PathPage() {
           );
         })}
 
-        <p className="note">
-          Thời gian mỗi giai đoạn là ước lượng khi học 30 phút mỗi ngày. Các bước tự đánh dấu và điểm bài nhập môn lưu trên trình duyệt
-          của máy này (đổi máy hoặc xóa dữ liệu trình duyệt thì mất phần tự đánh dấu; phần tự tính vẫn còn).
-        </p>
         {finished ? null : (
           <button className="btn sm" onClick={reset}>
             Làm lại lộ trình từ đầu

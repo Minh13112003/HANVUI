@@ -143,7 +143,7 @@ export default function TranslatePage() {
   return (
     <Shell title="Dịch">
       <div className="stack">
-        <div className="seg" role="tablist" aria-label="Chiều dịch">
+        <div className="seg pillseg" role="tablist" aria-label="Chiều dịch">
           <button role="tab" aria-selected={dir === 'zh2vi'} className={dir === 'zh2vi' ? 'on' : ''} onClick={() => setDir('zh2vi')}>
             Trung → Việt
           </button>
@@ -183,7 +183,7 @@ export default function TranslatePage() {
                 {dir === 'zh2vi' ? (
                   <>
                     <div className="row" style={{ gap: 8 }}>
-                      <span className="han" style={{ fontSize: 24, fontWeight: 700 }}>
+                      <span className="han" style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.4 }}>
                         {it.prompt}
                       </span>
                       <button className="icon-btn" aria-label="Nghe câu" onClick={() => play(it.prompt, null, {})}>
@@ -277,7 +277,6 @@ export default function TranslatePage() {
             </div>
           </section>
         ) : null}
-        <small className="muted">Nội dung đang soạn thử, chưa qua duyệt. Máy chỉ nhận các cách dịch đã soạn, nên hãy đối chiếu với bản tham khảo nếu bạn dùng cách nói khác.</small>
       </div>
     </Shell>
   );

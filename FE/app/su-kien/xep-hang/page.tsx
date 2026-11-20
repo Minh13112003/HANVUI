@@ -22,10 +22,6 @@ export default function BoardPage() {
     <Shell title="Xếp hạng">
       <div className="stack">
         <h1>Bảng xếp hạng {lb?.month}</h1>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Nhiều điểm hơn xếp trên; bằng điểm thì huy chương cao hơn; vẫn bằng thì ai giải xong sớm hơn.
-        </p>
-
         {lb?.me ? (
           <div className="card row between" style={{ borderColor: 'var(--accent)' }}>
             <span className="grow">
@@ -42,7 +38,7 @@ export default function BoardPage() {
             <div className="nrow" key={r.rank} style={r.me ? { background: 'var(--goodbg)' } : undefined}>
               <span className="nmain">
                 <span className="nzh" style={{ fontSize: 18, fontWeight: 700, minWidth: 40 }}>
-                  #{r.rank}
+                  {r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : '#' + r.rank}
                 </span>
                 <span className="grow">
                   <b>{r.me ? 'Bạn' : r.name}</b>

@@ -21,26 +21,17 @@ export interface VocabOverview {
   readiness: Readiness[];
 }
 
-function Row({ ok, label, value, need, hint }: { ok: boolean; label: string; value: string; need: string; hint?: string }) {
+function Row({ ok, label, pct, value, need }: { ok: boolean; label: string; pct: number; value: string; need: string }) {
   return (
-    <div className="row between" style={{ gap: 10, alignItems: 'flex-start' }}>
-      <span aria-hidden="true" style={{ fontWeight: 800, color: ok ? 'var(--good)' : 'var(--muted)', width: 18 }}>
-        {ok ? '✓' : '○'}
-      </span>
-      <span className="grow">
-        <b style={{ fontSize: 14 }}>{label}</b>
-        {hint ? (
-          <small className="muted" style={{ display: 'block' }}>
-            {hint}
-          </small>
-        ) : null}
-      </span>
-      <span style={{ textAlign: 'right' }}>
-        <b style={{ color: ok ? 'var(--good)' : undefined }}>{value}</b>
-        <small className="muted" style={{ display: 'block' }}>
-          cần {need}
-        </small>
-      </span>
+    <div className="rd-row">
+      <div className="row between">
+        <span className="rd-l">{label}</span>
+        <b className={'rd-v' + (ok ? ' ok' : '')}>{value}</b>
+      </div>
+      <div className="rd-bar" title={'cần ' + need}>
+        <i style={{ width: Math.min(pct, 100) + '%' }} className={ok ? 'ok' : ''} />
+        <u style={{ left: need }} aria-hidden="true" />
+      </div>
     </div>
   );
 }
@@ -74,27 +65,16 @@ export default function ReadinessCard({ data, level, showTestLink }: { data?: Re
   if (!r) return null;
   const v = r.vocab.best;
   return (
-    <section className="card stack" style={{ gap: 10 }}>
-      <div className="row between">
-        <b>Sẵn sàng thi lên HSK {r.level + 1}?</b>
-        <span className="pill" style={r.ready ? { background: 'var(--goodbg)', color: 'var(--good)' } : undefined}>
-          {r.ready ? 'Có vẻ sẵn sàng' : 'Chưa đủ gợi ý'}
+    <section className="card rd-card">
+      <div className="row between" style={{ gap: 8 }}>
+        <b className="rd-t">Mức sẵn sàng</b>
+        <span className={'pill rd-pill' + (r.ready ? ' ok' : '')}>
+          HSK {r.level} → {r.level + 1}
         </span>
       </div>
-      <Row
-        ok={r.checks.vocab}
-        label={`Kiểm tra bộ từ HSK ${r.level}`}
-        value={v ? v.pct + '%' : 'chưa làm'}
-        need={r.vocab.need + '%'}
-        hint={v ? (v.full ? 'điểm cao nhất khi làm toàn bộ bộ từ' : `điểm cao nhất (bài ${v.count} câu; làm toàn bộ để chính xác hơn)`) : 'tối thiểu 20 câu'}
-      />
-      <Row ok={r.checks.dialogs} label={`Hội thoại HSK ${r.level} đã học`} value={`${r.dialogs.done}/${r.dialogs.total} · ${r.dialogs.pct}%`} need={r.dialogs.need + '%'} hint="trả lời hết câu hỏi của bài" />
-      {r.readings.total ? (
-        <Row ok={r.checks.readings} label={`Bài đọc HSK ${r.level} đã đọc`} value={`${r.readings.done}/${r.readings.total} · ${r.readings.pct}%`} need={r.readings.need + '%'} />
-      ) : null}
-      <p className="muted" style={{ fontSize: 12 }}>
-        Chỉ để tham khảo: chưa đủ các mức trên bạn vẫn làm đề lên cấp được. Đạt đề HSK {r.level} khi đang ở đúng HSK {r.level} thì lên HSK {r.level + 1}.
-      </p>
+      <Row ok={r.checks.vocab} label="Từ vựng" pct={v ? v.pct : 0} value={v ? v.pct + '%' : 'chưa làm'} need={r.vocab.need + '%'} />
+      <Row ok={r.checks.dialogs} label="Hội thoại" pct={r.dialogs.pct} value={r.dialogs.pct + '%'} need={r.dialogs.need + '%'} />
+      {r.readings.total ? <Row ok={r.checks.readings} label="Bài đọc" pct={r.readings.pct} value={r.readings.pct + '%'} need={r.readings.need + '%'} /> : null}
       {showTestLink ? (
         <Link className="btn sm" href="/so-tay/kiem-tra" style={{ textAlign: 'center' }}>
           Kiểm tra từ vựng

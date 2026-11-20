@@ -66,7 +66,7 @@ export default function SpeakPage() {
               <span className="eyebrow2">
                 Từ {i + 1}/{words.length}
               </span>
-              <div className="han" style={{ fontSize: 46, lineHeight: 1.1 }}>
+              <div className="han" style={{ fontSize: 56, lineHeight: 1.1 }}>
                 {w.zh}
               </div>
               <Pinyin text={w.pinyin} />
@@ -96,7 +96,7 @@ export default function SpeakPage() {
               ) : null}
             </div>
 
-            <div className="seg" role="tablist" aria-label="Đọc gì">
+            <div className="seg pillseg" role="tablist" aria-label="Đọc gì">
               <button role="tab" aria-selected={readWhat === 'word'} className={readWhat === 'word' ? 'on' : ''} onClick={() => setReadWhat('word')}>
                 Đọc từ
               </button>

@@ -347,68 +347,42 @@ export default function QuizPage() {
   return (
     <Shell title="Kiểm tra">
       <div className="stack">
-        <h1>Kiểm tra từ vựng</h1>
         {!ov ? <p className="muted">Đang tải…</p> : null}
         {ov ? <ReadinessCard data={ov.readiness.find((r) => r.level === ov.currentLevel) ?? null} /> : null}
 
         {ov ? (
           <section className="card stack">
-            <span className="eyebrow2">1. Chọn bộ từ</span>
-            <div className="stack" style={{ gap: 8 }}>
-              {src?.kind === 'group' ? (
-                <button className="opt ok" style={{ textAlign: 'left' }}>
-                  <b>Nhóm đang ôn</b> <small className="muted">· {src.ids.length} từ từ Sổ tay</small>
-                </button>
-              ) : null}
+            <span className="kt-h">Nguồn từ</span>
+            <div className="kt-chips">
+              {src?.kind === 'group' ? <button className="kt-chip on">Nhóm ôn · {src.ids.length}</button> : null}
+              <button className={'kt-chip' + (srcKey(src) === 'notebook' ? ' on' : '')} disabled={!ov.notebook} onClick={() => setSrc({ kind: 'notebook' })}>
+                Sổ tay
+              </button>
               {ov.sets.map((s) => (
-                <button
-                  key={s.level}
-                  className={'opt' + (srcKey(src) === 'hsk' + s.level ? ' ok' : '')}
-                  onClick={() => setSrc({ kind: 'hsk', level: s.level })}
-                  style={{ textAlign: 'left' }}
-                >
-                  <span className="row between" style={{ gap: 8 }}>
-                    <span>
-                      <b>Bộ từ HSK {s.level}</b> <small className="muted">· {s.total} từ</small>
-                      {s.level === ov.currentLevel ? <small className="muted"> · cấp của bạn</small> : null}
-                    </span>
-                    <small className={s.best ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
-                      {s.best ? `cao nhất ${s.best.pct}%` : 'chưa làm'}
-                    </small>
-                  </span>
+                <button key={s.level} className={'kt-chip' + (srcKey(src) === 'hsk' + s.level ? ' on' : '')} onClick={() => setSrc({ kind: 'hsk', level: s.level })}>
+                  HSK {s.level}
                 </button>
               ))}
-              <button
-                className={'opt' + (srcKey(src) === 'notebook' ? ' ok' : '')}
-                disabled={!ov.notebook}
-                onClick={() => setSrc({ kind: 'notebook' })}
-                style={{ textAlign: 'left' }}
-              >
-                <b>Sổ tay của tôi</b> <small className="muted">· {ov.notebook} từ có nghĩa</small>
-              </button>
             </div>
           </section>
         ) : null}
 
         {ov ? (
           <section className="card stack">
-            <span className="eyebrow2">2. Cách kiểm tra</span>
-            <div className="seg" role="tablist" aria-label="Cách kiểm tra">
+            <span className="kt-h">Kiểu thi</span>
+            <div className="kt-modes" role="tablist" aria-label="Cách kiểm tra">
               {MODES.map((m) => (
-                <button key={m.v} role="tab" aria-selected={mode === m.v} className={mode === m.v ? 'on' : ''} onClick={() => setMode(m.v)}>
+                <button key={m.v} role="tab" aria-selected={mode === m.v} className={'kt-mode' + (mode === m.v ? ' on' : '')} onClick={() => setMode(m.v)}>
                   {m.label}
                 </button>
               ))}
             </div>
-            <p className="muted" style={{ fontSize: 13 }}>
-              {MODES.find((m) => m.v === mode)?.hint}
-            </p>
           </section>
         ) : null}
 
         {ov && size ? (
           <section className="card stack">
-            <span className="eyebrow2">3. Số câu</span>
+            <span className="kt-h">Số câu</span>
             <div className="row" style={{ gap: 8 }}>
               <label className="field grow" style={{ margin: 0 }}>
                 <input
@@ -431,11 +405,8 @@ export default function QuizPage() {
                 Toàn bộ ({size})
               </button>
             </div>
-            <small className="muted">
-              {src?.kind === 'hsk' ? `Tối thiểu ${min} câu, tối đa cả bộ (${size} từ).` : `Từ 1 đến ${size} câu.`} Từ được chọn ngẫu nhiên.
-            </small>
             <button className="btn primary" disabled={busy || count < Math.min(min, size) || count > size} onClick={start}>
-              Bắt đầu {count} câu
+              Bắt đầu →
             </button>
           </section>
         ) : null}
