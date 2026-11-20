@@ -9,7 +9,7 @@ import WordSheet from '@/components/WordSheet';
 import { api } from '@/lib/api';
 import { play } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
-import { dayLabel, hskLabel } from '@/lib/text';
+import { dayLabel } from '@/lib/text';
 import { useUi } from '@/lib/ui';
 import type { Notebook, UserWord } from '@/lib/types';
 
@@ -53,39 +53,33 @@ export default function NotebookPage() {
 
   return (
     <Shell title="Sổ tay">
-      <div className="stack">
-        <h1>Sổ tay từ vựng</h1>
-        <section className="stats">
-          <div className="stat" data-g="rose">
-            <span className="ic han" aria-hidden="true">
-              词
-            </span>
-            <b className="num">{data?.total ?? '…'}</b>
-            <small>tổng số từ</small>
-          </div>
-          <div className="stat">
-            <span className="ic han" aria-hidden="true">
-              今
-            </span>
-            <b className="num">{data?.today ?? '…'}</b>
-            <small>lưu hôm nay</small>
-          </div>
-          <div className="stat" data-g="violet">
-            <span className="ic han" aria-hidden="true">
-              组
-            </span>
-            <b className="num">{data?.groups.length ?? '…'}</b>
-            <small>{view === 'day' ? 'ngày học' : 'chủ đề'}</small>
-          </div>
-        </section>
+      <div className="stack nb">
+        <div className="nb-top">
+          <Link className="btn primary nb-act" href="/so-tay/kiem-tra">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="4" y="4" width="16" height="16" rx="3" />
+              <path d="m8 12 3 3 5-6" />
+            </svg>
+            Kiểm tra
+          </Link>
+          <Link className="btn nb-act" href="/so-tay/viet-nho">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4" />
+            </svg>
+            Viết từ trí nhớ
+          </Link>
+        </div>
 
-        <div className="seg" role="tablist" aria-label="Cách xem">
-          <button className={view === 'day' ? 'on' : ''} role="tab" aria-selected={view === 'day'} onClick={() => setView('day')}>
-            Theo ngày
-          </button>
-          <button className={view === 'topic' ? 'on' : ''} role="tab" aria-selected={view === 'topic'} onClick={() => setView('topic')}>
-            Theo chủ đề
-          </button>
+        <div className="nb-bar">
+          <div className="seg pillseg" role="tablist" aria-label="Cách xem">
+            <button className={view === 'day' ? 'on' : ''} role="tab" aria-selected={view === 'day'} onClick={() => setView('day')}>
+              Theo ngày
+            </button>
+            <button className={view === 'topic' ? 'on' : ''} role="tab" aria-selected={view === 'topic'} onClick={() => setView('topic')}>
+              Theo chủ đề
+            </button>
+          </div>
+          <span className="chip-total">{data?.total ?? '…'} từ lưu</span>
         </div>
 
         <div className="search">
@@ -93,24 +87,20 @@ export default function NotebookPage() {
             <circle cx="11" cy="11" r="7" />
             <path d="m16.5 16.5 4 4" />
           </svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm chữ Hán, pinyin hoặc nghĩa" aria-label="Tìm từ" />
-        </div>
-
-        <div className="row" style={{ gap: 8 }}>
-          <Link className="btn primary sm grow" href="/so-tay/kiem-tra" style={{ textAlign: 'center' }}>
-            Kiểm tra từ vựng
-          </Link>
-          <Link className="btn sm grow" href="/so-tay/viet-nho" style={{ textAlign: 'center' }}>
-            ✍️ Viết từ trí nhớ
-          </Link>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm từ vựng, pinyin…" aria-label="Tìm từ" />
         </div>
 
         {data?.groups.map((g) => (
           <section className="ngroup" key={g.key}>
             <div className="nghead">
-              <b className="grow">{view === 'day' ? dayLabel(g.key) : g.key}</b>
+              <h2 className="nh-t">{view === 'day' ? dayLabel(g.key) : g.key}</h2>
               <span className="pill">{g.count} từ</span>
-              <button className="lnk" onClick={() => review(g.words)}>
+              <span className="grow" />
+              <button className="nh-btn" onClick={() => review(g.words)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="m10 8.5 5 3.5-5 3.5z" />
+                </svg>
                 Ôn nhóm này
               </button>
             </div>
@@ -118,24 +108,24 @@ export default function NotebookPage() {
               {g.words.map((w) => (
                 <div className="nrow" key={w.id}>
                   <button className="nmain" onClick={() => openSheet(<WordSheet word={w} lessonId={w.sourceLessonId ?? undefined} />)}>
-                    <span className="nzh han">{w.zh}</span>
+                    <span className="nlv">{w.hsk2 ? 'H' + w.hsk2 : '—'}</span>
                     <span className="grow">
-                      <span className="py">{w.pinyin || '—'}</span>
-                      <b style={{ display: 'block' }}>{w.vi || 'AI sẽ điền nghĩa'}</b>
-                      <small className="nsrc">
-                        {w.isPhrase ? 'cụm từ · ' : ''}
-                        {hskLabel(w.hsk2, w.hsk3)}
-                        {w.sourceLessonId ? ' · từ bài ' + w.sourceLessonId : ''}
-                      </small>
+                      <span className="nline">
+                        <span className="nzh han">{w.zh}</span>
+                        <span className="py">{w.pinyin || '—'}</span>
+                      </span>
+                      <span className="nvi">{w.vi || 'AI sẽ điền nghĩa'}</span>
                     </span>
                   </button>
-                  <button className="icon-btn" aria-label={'Nghe ' + w.zh} onClick={() => play(w.zh, null, {})}>
+                  <button className="icon-btn nspk" aria-label={'Nghe ' + w.zh} onClick={() => play(w.zh, null, {})}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                       <path d="M4 9v6h3l5 4V5L7 9H4zM16 8.5a4 4 0 0 1 0 7" />
                     </svg>
                   </button>
-                  <button className="icon-btn" aria-label={'Bỏ ' + w.zh} onClick={() => remove(w)} style={{ color: 'var(--bad)' }}>
-                    ×
+                  <button className="icon-btn nstar" aria-label={'Bỏ ' + w.zh} onClick={() => remove(w)}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m12 3.5 2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.9l6-.9z" />
+                    </svg>
                   </button>
                 </div>
               ))}
@@ -145,20 +135,17 @@ export default function NotebookPage() {
 
         {data && data.total === 0 ? (
           <div className="card empty center">
-            <p className="muted">
-              Chưa có từ nào. Vào một bài hội thoại, bật "Chế độ lưu từ" ở phần lời thoại rồi chạm từ để lưu.
-            </p>
+            <p className="muted">Chưa có từ nào.</p>
             <Link className="btn primary sm" href="/hoc/nghe">
               Đi học một bài
             </Link>
           </div>
         ) : null}
 
-        <p className="note">Ôn tập ngắt quãng (từ sai hiện lại sớm) sẽ thêm sau — rule.md mục 3.8.</p>
         <Tips
           screen="notebook"
           tips={[
-            { sel: '.seg', title: 'Hai cách xem', text: 'Theo ngày để ôn ngay trong ngày, theo chủ đề để ôn theo ngữ cảnh.' },
+            { sel: '.pillseg', title: 'Hai cách xem', text: 'Theo ngày để ôn ngay trong ngày, theo chủ đề để ôn theo ngữ cảnh.' },
             { title: 'Ôn nhóm này', text: 'Mỗi nhóm có nút ôn riêng: làm bài kiểm tra chỉ với các từ trong nhóm.' },
           ]}
         />

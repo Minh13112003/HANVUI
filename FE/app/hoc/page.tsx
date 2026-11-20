@@ -31,16 +31,12 @@ export default function VocabTopicsPage() {
           <div className="hnum2" style={{ fontSize: 22 }}>
             {topics?.length ?? '…'} chủ đề
           </div>
-          <span className="hsub">
-            Chạm một từ để xem cách viết từng nét, nghe cách đọc (thường và chậm) rồi lưu vào Sổ tay.
-          </span>
         </section>
 
         <Link href="/hoc/chu-de" className="topic">
           <span className="big han">专</span>
           <span className="grow">
             <b>Từ vựng chuyên ngành</b>
-            <small style={{ display: 'block' }}>AI, Công nghệ, Công nghiệp, Xây dựng, Logistics, Chính trị</small>
           </span>
           <span className="chev">›</span>
         </Link>
@@ -51,23 +47,19 @@ export default function VocabTopicsPage() {
             <span className="big han">{t.glyph ?? '汉'}</span>
             <span className="grow">
               <b>{t.name}</b>
-              <small style={{ display: 'block' }}>Bảng từ, che nghĩa, nghe và tập viết</small>
             </span>
             <span className="chev">›</span>
           </Link>
         ))}
         {topics?.length === 0 ? (
           <div className="card empty">
-            <p className="muted">Chưa có chủ đề nào. Chạy `pnpm db:seed` ở BE để nạp nội dung mẫu.</p>
+            <p className="muted">Chưa có chủ đề.</p>
           </div>
         ) : null}
 
         <Link href="/so-tay" className="card row between">
           <span>
             <b>Từ của tôi</b>
-            <small className="muted" style={{ display: 'block' }}>
-              Các từ bạn đã lưu nằm trong Sổ tay
-            </small>
           </span>
           <span className="chev">›</span>
         </Link>

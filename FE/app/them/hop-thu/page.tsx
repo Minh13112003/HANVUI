@@ -160,72 +160,71 @@ export default function MailboxPage() {
   const counts = list?.counts;
   return (
     <Shell title="Hộp thư">
-      <div className="stack">
-        <div className="row between">
-          <h1>Hộp thư</h1>
-          {counts?.unread ? <span className="badge-n">{counts.unread} chưa đọc</span> : null}
+      <div className="stack mb">
+        <div className="mb-top">
+          <button className="btn primary grow" disabled={busy || !counts?.unclaimed} onClick={claimAll}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9c-1.5-3-5-4-5-1.5S10 9 12 9zM12 9c1.5-3 5-4 5-1.5S14 9 12 9z" />
+            </svg>
+            Nhận tất cả quà
+          </button>
+          <button className="btn" disabled={busy || !counts?.unread} onClick={readAll}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m3 12 4 4 6-8M12 16l1 1 8-10" />
+            </svg>
+            Đã đọc
+          </button>
         </div>
 
-        <div className="seg" role="tablist" aria-label="Lọc thư">
+        <div className="mb-tabs" role="tablist" aria-label="Lọc thư">
           {(
             [
               ['all', 'Tất cả'],
-              ['unread', `Chưa đọc${counts?.unread ? ` (${counts.unread})` : ''}`],
-              ['gift', `Có quà${counts?.unclaimed ? ` (${counts.unclaimed})` : ''}`],
+              ['unread', 'Chưa đọc'],
+              ['gift', 'Có quà'],
             ] as [View, string][]
           ).map(([v, label]) => (
-            <button key={v} role="tab" aria-selected={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
+            <button key={v} role="tab" aria-selected={view === v} className={'mb-tab' + (view === v ? ' on' : '')} onClick={() => setView(v)}>
               {label}
+              {v === 'unread' && counts?.unread ? <i>{counts.unread}</i> : null}
+              {v === 'gift' && counts?.unclaimed ? <i className="gold">{counts.unclaimed}</i> : null}
             </button>
           ))}
         </div>
 
-        <div className="chips" role="group" aria-label="Người gửi">
-          <button className={'chip' + (!sender ? ' on' : '')} onClick={() => setSender('')}>
-            Mọi người gửi
+        <div className="mb-src" role="group" aria-label="Người gửi">
+          <span>Nguồn:</span>
+          <button className={!sender ? 'on' : ''} onClick={() => setSender('')}>
+            Tất cả
           </button>
-          <button className={'chip' + (sender === 'ADMIN' ? ' on' : '')} onClick={() => setSender('ADMIN')}>
-            Quản trị viên
+          <button className={sender === 'ADMIN' ? 'on' : ''} onClick={() => setSender('ADMIN')}>
+            Quản trị
           </button>
-          <button className={'chip' + (sender === 'SYSTEM' ? ' on' : '')} onClick={() => setSender('SYSTEM')}>
+          <button className={sender === 'SYSTEM' ? 'on' : ''} onClick={() => setSender('SYSTEM')}>
             Hệ thống
           </button>
         </div>
 
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn sm grow" disabled={busy || !counts?.unread} onClick={readAll}>
-            Đánh dấu đã đọc hết
-          </button>
-          <button className="btn sm primary grow" disabled={busy || !counts?.unclaimed} onClick={claimAll}>
-            Nhận tất cả quà
-          </button>
-        </div>
-
         {!list ? <p className="muted">Đang tải…</p> : null}
-        {list && !list.items.length ? <p className="muted">Không có thư nào ở mục này.</p> : null}
+        {list && !list.items.length ? <p className="muted">Không có thư nào.</p> : null}
         {list?.items.map((m) => (
-          <button key={m.id} className={'mail-row' + (m.read ? '' : ' unread')} onClick={() => openMail(m.id)}>
-            <span className="mail-av han" data-s={m.sender} aria-hidden="true">
-              {SENDER[m.sender].zh}
-            </span>
-            <span className="grow" style={{ display: 'grid', gap: 2 }}>
-              <span className="row between" style={{ gap: 8 }}>
-                <span className="mail-from">{SENDER[m.sender].name}</span>
-                <small className="muted">{new Date(m.createdAt).toLocaleDateString('vi-VN')}</small>
+          <button key={m.id} className={'mail-row' + (m.read ? '' : ' unread') + (m.hasReward && !m.claimable && !m.claimed ? ' expired' : '')} onClick={() => openMail(m.id)}>
+            <span className="row between" style={{ gap: 8 }}>
+              <span className="mail-tag" data-s={m.sender}>
+                {m.sender === 'ADMIN' ? 'Quản trị' : 'Hệ thống'}
               </span>
-              <b className="subj" style={{ fontSize: 15 }}>
-                {m.read ? '' : '● '}
-                {m.subject}
-              </b>
-              <small className="muted">{m.preview}</small>
-              {m.hasReward ? (
-                <span>
-                  <span className={'mail-gift' + (m.claimable ? '' : ' done')}>
-                    {m.claimable ? 'Quà: ' + giftText(m.reward) : m.claimed ? 'Đã nhận quà' : 'Quà hết hạn'}
-                  </span>
-                </span>
-              ) : null}
+              <small className="muted">{new Date(m.createdAt).toLocaleDateString('vi-VN')}</small>
             </span>
+            <b className="subj">{m.subject}</b>
+            <span className="mail-pre">{m.preview}</span>
+            {m.hasReward ? (
+              <span className="row between" style={{ gap: 8 }}>
+                <span className="mail-gift-chip">{giftText(m.reward)}</span>
+                <span className={'mail-gift' + (m.claimable ? ' go' : ' done')}>
+                  {m.claimable ? 'Còn nhận' : m.claimed ? 'Đã nhận' : 'Hết hạn'}
+                </span>
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

@@ -262,7 +262,8 @@ export interface WritingItem {
   id: number;
   level: number;
   type: 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
-  vi: string;
+  /** Sắp xếp câu không có: làm xong mới biết nghĩa. */
+  vi?: string;
   tiles?: string[];
   parts?: string[];
   options?: string[];
@@ -279,6 +280,13 @@ export interface WritingCheck {
   answer: string;
   sentence: string;
   vi: string;
+  /** Chỉ có ở Sắp xếp câu. */
+  altUsed?: boolean;
+  pinyin?: string;
+  tokens?: { zh: string; py: string; vi: string; save?: string }[];
+  natural?: { vi: string; at: number }[];
+  /** Giải thích đáp án (bài luyện ngữ pháp HSK 1-2): vì sao đúng, vì sao từng lựa chọn sai (khóa là nội dung lựa chọn). */
+  why?: { ok: string; no: Record<string, string> };
 }
 
 export interface GrammarListItem {

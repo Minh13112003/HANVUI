@@ -43,15 +43,21 @@ export default function BagPage() {
   return (
     <Shell title="Túi đồ">
       <div className="stack">
-        <h1>Túi đồ</h1>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Vật phẩm chỉ bắt đầu đếm thời gian khi bạn bấm mở. Không mở trước hạn thì vật phẩm hết hạn dùng.
-        </p>
+        <div className="sec-h">
+          <h1>Túi đồ</h1>
+          {items ? <span className="pill">{items.length} vật phẩm</span> : null}
+        </div>
 
         {items?.map((it) => {
           const expired = !it.openedAt && new Date(it.expiresAt) < new Date();
           return (
-            <div className="card row between" key={it.id}>
+            <div className={'bagitem' + (it.openedAt || expired ? ' used' : '')} key={it.id}>
+              <span className="bag-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="9" r="5" />
+                  <path d="m9 13-1 7 4-2 4 2-1-7M12 6.5l.8 1.6 1.7.2-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.2z" />
+                </svg>
+              </span>
               <span className="grow">
                 <b>{it.kind === 'VIP_3D' ? 'Thẻ VIP 3 ngày' : it.kind}</b>
                 <small className="muted" style={{ display: 'block' }}>

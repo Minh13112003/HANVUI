@@ -34,6 +34,8 @@
     "db:seed:readings": "tsx prisma/seed/seed-readings.ts",
     "db:seed:translate": "tsx prisma/seed/seed-translate.ts",
     "db:seed:translate-sentences": "tsx prisma/seed/seed-translate-sentences.ts",
+    "db:seed:order-reveal": "tsx prisma/seed/seed-order-reveal.ts",
+    "db:seed:grammar-why": "tsx prisma/seed/seed-grammar-why.ts",
     "db:seed:hsk4": "tsx prisma/seed/seed-hsk4.ts",
     "db:seed:word-extra": "tsx prisma/seed/seed-word-extra.ts",
     "db:seed:grammar": "tsx prisma/seed/seed-grammar.ts",

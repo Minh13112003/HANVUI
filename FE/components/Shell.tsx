@@ -62,7 +62,7 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
             </span>
             <div>
               <b>HanVui</b>
-              <small>{title ?? 'Học tiếng Trung mỗi ngày'}</small>
+              {title ? <small>{title}</small> : null}
             </div>
           </Link>
           <Link href="/so-tay" className="pill">

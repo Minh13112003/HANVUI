@@ -22,10 +22,12 @@ interface Today {
 }
 
 const SKILLS = [
-  { href: '/hoc/nghe', cls: 'k-listen', zh: '听', name: 'Nghe', note: 'hội thoại có tiếng' },
-  { href: '/hoc/noi', cls: 'k-speak', zh: '说', name: 'Nói', note: 'đọc theo mẫu' },
-  { href: '/hoc/doc', cls: 'k-read', zh: '读', name: 'Đọc', note: 'bài đọc ngắn' },
-  { href: '/hoc/viet', cls: 'k-write', zh: '写', name: 'Viết', note: 'tập viết từng nét' },
+  { href: '/hoc', cls: 'k-vocab', zh: '词', py: 'cí', name: 'Từ vựng' },
+  { href: '/hoc/nghe', cls: 'k-listen', zh: '听', py: 'tīng', name: 'Nghe' },
+  { href: '/hoc/noi', cls: 'k-speak', zh: '说', py: 'shuō', name: 'Nói' },
+  { href: '/hoc/doc', cls: 'k-read', zh: '读', py: 'dú', name: 'Đọc' },
+  { href: '/hoc/viet', cls: 'k-write', zh: '写', py: 'xiě', name: 'Viết' },
+  { href: '/hoc/dich', cls: 'k-trans', zh: '译', py: 'yì', name: 'Dịch' },
 ] as const;
 
 export default function HomePage() {
@@ -49,116 +51,113 @@ export default function HomePage() {
   const medal = ev?.medal?.level ?? 0;
   const th = ev?.medal?.thresholds ?? [5, 15, 29, 44];
 
+  const std = user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2';
+  const left = today ? 4 - (today.claimed.login ? 1 : 0) - (today.claimed.lessons ? 2 : 0) - (today.claimed.online ? 1 : 0) : 0;
+
   return (
     <Shell>
       <div className="stack">
-        <section className="surf" data-g="night">
-          <span className="wm" aria-hidden="true">
-            学
-          </span>
-          <div className="row between">
-            <span className="eyebrow">{greeting()}</span>
-            {ev?.week?.login ? <Flame days={ev.week.login} /> : <span className="hpill">Bắt đầu chuỗi hôm nay</span>}
-          </div>
-          <div>
-            <div className="hnum2" style={{ fontSize: 24 }}>
-              {user?.displayName}
-            </div>
-            <span className="hsub">
-              {user ? standardName(user.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2') + ' · ' + levelName(user.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', user.hskLevel) : ''} · đã học {doneLessons}/
-              {lessons?.length ?? 0} bài
+        <section className="greet">
+          <h1>
+            {greeting()}, {user?.displayName}
+          </h1>
+          <div className="gchips">
+            {ev?.week?.login ? <Flame days={ev.week.login} /> : null}
+            <span className="gchip">
+              <span aria-hidden="true">💡</span>
+              <CountUp value={ev?.tokens ?? 0} />
             </span>
-          </div>
-          <div className="row between">
-            <Link className="btn primary" href="/hoc/nghe">
-              Học tiếp →
-            </Link>
-            <span className="hsub">Tuần {ev?.week?.index ?? 1}</span>
+            <span className="gchip lv">{user ? standardName(std) + ' | ' + levelName(std, user.hskLevel) : ''}</span>
           </div>
         </section>
 
-        {user && (user.hskStandard === 'HSK3' ? user.hskLevel <= 1 : user.hskLevel <= 2) ? (
-          <Link href="/lo-trinh" className="card row" style={{ gap: 12, borderLeft: '4px solid var(--accent)' }}>
-            <span className="han" style={{ fontSize: 30, lineHeight: 1 }} aria-hidden="true">
-              路
-            </span>
-            <span className="grow">
-              <b>Mới học tiếng Trung? Đi theo lộ trình</b>
-              <small className="muted" style={{ display: 'block' }}>
-                Pinyin, thanh điệu, nét chữ → HSK 1 → HSK 2. Mỗi bước chỉ rõ bấm gì.
-              </small>
-            </span>
-            <span className="chev">›</span>
-          </Link>
-        ) : null}
+        <section className="surf goal" data-g="night">
+          <span className="wm" aria-hidden="true">
+            学
+          </span>
+          <div className="goal-in">
+            <div className="goal-tx">
+              <span className="eyebrow">Mục tiêu hôm nay</span>
+              <div className="hnum2" style={{ fontSize: 22 }}>
+                {today && today.done >= 3 ? 'Hoàn thành' : today && left > 0 ? '+' + left + ' 💡 đang chờ' : 'Bắt đầu thôi'}
+              </div>
+              <Link className="btn primary" href="/hoc/nghe">
+                Học tiếp →
+              </Link>
+            </div>
+            <Ring done={today?.done ?? 0} total={3} label={(today?.done ?? 0) + '/3'} />
+          </div>
+        </section>
 
         <section className="stats">
-          <div className="stat">
-            <span className="ic han" aria-hidden="true">
-              签
-            </span>
-            <b>
-              <CountUp value={ev?.tokens ?? 0} />
-            </b>
-            <small>lượt gợi ý</small>
-          </div>
-          <div className="stat" data-g="violet">
-            <span className="ic han" aria-hidden="true">
-              分
-            </span>
-            <b>
-              <CountUp value={ev?.points ?? 0} />
-            </b>
-            <small>điểm sự kiện</small>
-          </div>
-          <Link className="stat" data-g="rose" href="/so-tay">
+          <Link className="stat" href="/so-tay">
             <span className="ic han" aria-hidden="true">
               词
             </span>
             <b>
               <CountUp value={nb?.total ?? 0} />
             </b>
-            <small>từ đã lưu</small>
+            <small>Từ đã lưu</small>
           </Link>
+          <div className="stat">
+            <span className="ic han" aria-hidden="true">
+              听
+            </span>
+            <b>
+              <CountUp value={doneLessons} />
+            </b>
+            <small>Bài đã nghe</small>
+          </div>
+          <div className="stat">
+            <span className="ic han" aria-hidden="true">
+              时
+            </span>
+            <b>
+              <CountUp value={Math.floor((today?.onlineSec ?? 0) / 60)} />p
+            </b>
+            <small>Phút học</small>
+          </div>
         </section>
+
+        {user && (user.hskStandard === 'HSK3' ? user.hskLevel <= 1 : user.hskLevel <= 2) ? (
+          <Link href="/lo-trinh" className="card row" style={{ gap: 12 }}>
+            <span className="han" style={{ fontSize: 28, lineHeight: 1, color: 'var(--accent)' }} aria-hidden="true">
+              路
+            </span>
+            <b className="grow">Lộ trình cho người mới</b>
+            <span className="chev">›</span>
+          </Link>
+        ) : null}
 
         <section className="card today">
           <div className="row between">
             <h2>Nhiệm vụ hôm nay</h2>
             <span className={'pill' + (today?.done === 3 ? ' ok' : '')}>{today ? today.done + '/3' : '…'}</span>
           </div>
-          <div className="row">
-            <Ring done={today?.done ?? 0} total={3} />
-            <div className="grow mini">
-              <div className="mrow">
-                <span className={'mck' + (today?.claimed.login ? ' on' : '')}>✓</span>
-                <span className="grow">Đăng nhập</span>
-                <span className="pill">+1</span>
-              </div>
-              <div className="mrow">
-                <span className={'mck' + (today?.claimed.lessons ? ' on' : '')}>✓</span>
-                <span className="grow">
-                  Nghe và trả lời 2 bài
-                  {today ? ' (' + Math.min(today.lessonsToday, today.lessonsNeeded) + '/' + today.lessonsNeeded + ')' : ''}
-                </span>
-                <span className="pill">+2</span>
-              </div>
-              <div className="mrow">
-                <span className={'mck' + (today?.claimed.online ? ' on' : '')}>✓</span>
-                <span className="grow">Online 30 phút{today ? ' (' + minutes(today.onlineSec) + ')' : ''}</span>
-                <span className="pill">+1</span>
-              </div>
+          <div className="mini">
+            <div className="mrow">
+              <span className={'mck' + (today?.claimed.login ? ' on' : '')}>✓</span>
+              <span className="grow">Đăng nhập</span>
+              <span className="pill">+1</span>
+            </div>
+            <div className="mrow">
+              <span className={'mck' + (today?.claimed.lessons ? ' on' : '')}>✓</span>
+              <span className="grow">
+                Nghe và trả lời 2 bài
+                {today ? ' (' + Math.min(today.lessonsToday, today.lessonsNeeded) + '/' + today.lessonsNeeded + ')' : ''}
+              </span>
+              <span className="pill">+2</span>
+            </div>
+            <div className="mrow">
+              <span className={'mck' + (today?.claimed.online ? ' on' : '')}>✓</span>
+              <span className="grow">Online 30 phút{today ? ' (' + minutes(today.onlineSec) + ')' : ''}</span>
+              <span className="pill">+1</span>
             </div>
           </div>
-          {today && today.done < 3 ? (
-            <Link className="btn primary" href="/hoc/nghe" style={{ marginTop: 10, textAlign: 'center' }}>
-              Làm nhiệm vụ · thêm {4 - (today.claimed.login ? 1 : 0) - (today.claimed.lessons ? 2 : 0) - (today.claimed.online ? 1 : 0)} lượt
-            </Link>
-          ) : null}
         </section>
 
         <div className="shead">
-          <span className="eyebrow2">BỐN KỸ NĂNG</span>
+          <span className="eyebrow2">KỸ NĂNG</span>
         </div>
         <section className="skills">
           {SKILLS.map((s) => (
@@ -166,11 +165,18 @@ export default function HomePage() {
               <span className="stile han" aria-hidden="true">
                 {s.zh}
               </span>
-              <b>{s.name}</b>
-              <small>{s.note}</small>
-              <span className="sbar">
-                <i style={{ width: (s.name === 'Nghe' ? pctListen : 0) + '%' }} />
+              <span className="py" aria-hidden="true">
+                {s.py}
               </span>
+              <b>{s.name}</b>
+              <span className="wmh" aria-hidden="true">
+                {s.zh}
+              </span>
+              {s.name === 'Nghe' ? (
+                <span className="sbar">
+                  <i style={{ width: pctListen + '%' }} />
+                </span>
+              ) : null}
             </Link>
           ))}
         </section>
@@ -181,7 +187,7 @@ export default function HomePage() {
               谜
             </span>
             <div className="row between">
-              <span className="eyebrow">Sự kiện tháng {ev.story?.month}</span>
+              <span className="eyebrow">Sự kiện</span>
               <span className="hpill">
                 {ev.solved}/{ev.totalKeys} từ khóa
               </span>
@@ -215,12 +221,10 @@ export default function HomePage() {
                 <Medal key={lv} level={lv} got={medal >= lv} need={th[lv - 1]} />
               ))}
             </div>
-            <span className="hsub">Chương tuần này · ngày {ev.day} · chạm để mở bảng 12 ô</span>
           </Link>
         ) : (
           <div className="card empty center">
-            <h2>Chưa có sự kiện tháng này</h2>
-            <p className="muted">Mỗi tháng dương lịch là một sự kiện mới. Hãy quay lại vào ngày 1.</p>
+            <h2>Chưa có sự kiện</h2>
           </div>
         )}
 
@@ -228,7 +232,7 @@ export default function HomePage() {
           <section className="card stack">
             <div className="row between">
               <h2>Nhiệm vụ tuần {ev.week.index}</h2>
-              <span className="pill">tối đa +21 lượt</span>
+              <span className="pill">+21 💡</span>
             </div>
             {ev.week.marks.map((t) => {
               const value = t.key === 'login' ? ev.week!.login : t.key === 'online' ? ev.week!.online : ev.week!.lessons;
@@ -256,23 +260,13 @@ export default function HomePage() {
           </section>
         ) : null}
 
-        <Link href="/so-tay" className="card row between">
-          <span>
-            <b>Sổ tay từ vựng</b>
-            <small className="muted" style={{ display: 'block' }}>
-              Hôm nay lưu {nb?.today ?? 0} từ · tổng {nb?.total ?? 0}
-            </small>
-          </span>
-          <span className="chev">›</span>
-        </Link>
-
         <Tips
           screen="home"
           tips={[
             { sel: '.surf', title: 'Trang chủ', text: 'Lời chào, chuỗi ngày đăng nhập và tiến độ tuần của bạn nằm ở đây.' },
-            { sel: '.stats', title: 'Ba số quan trọng', text: 'Lượt gợi ý để mở gợi ý sự kiện, điểm sự kiện để xếp hạng, và số từ bạn đã lưu.' },
+            { sel: '.stats', title: 'Số liệu', text: 'Số từ đã lưu, bài đã nghe và số phút học hôm nay.' },
             { sel: '.today', title: 'Nhiệm vụ hôm nay', text: 'Làm đủ 3 việc này là có 4 lượt gợi ý mỗi ngày.' },
-            { sel: '.skills', title: 'Bốn kỹ năng', text: 'Nghe, Nói, Đọc, Viết. Phần Từ vựng nằm trong tab Học.' },
+            { sel: '.skills', title: 'Kỹ năng', text: 'Từ vựng, Nghe, Nói, Đọc, Viết và Dịch.' },
           ]}
         />
       </div>

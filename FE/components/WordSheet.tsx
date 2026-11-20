@@ -116,9 +116,13 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
 
   return (
     <>
-      <div className="row between">
+      <div className="ws-chips">
+        <span className="pill ws-hsk">{shown.hsk2 ? 'HSK ' + shown.hsk2 : hskLabel(shown.hsk2, shown.hsk3)}</span>
+        {shown.pos ? <span className="pos">{shown.pos}</span> : null}
+      </div>
+      <div className="row between ws-head">
         <div className="grow">
-          <div className="han" style={{ fontSize: 40, lineHeight: 1.1 }}>
+          <div className="han" style={{ fontSize: 44, lineHeight: 1.1 }}>
             {word.zh}
           </div>
           {shown.pinyin ? <Pinyin text={shown.pinyin} /> : null}
@@ -140,11 +144,7 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
         </div>
       </div>
 
-      <div className="row wrap" style={{ gap: 6 }}>
-        {shown.vi ? <b>{shown.vi}</b> : <span className="muted">AI sẽ điền nghĩa</span>}
-        {shown.pos ? <span className="pos">{shown.pos}</span> : null}
-        <span className="pill">{hskLabel(shown.hsk2, shown.hsk3)}</span>
-      </div>
+      <div className="ws-vi">{shown.vi ? <b>{shown.vi}</b> : <span className="muted">AI sẽ điền nghĩa</span>}</div>
 
       {shown.example ? (
         <div className="note">

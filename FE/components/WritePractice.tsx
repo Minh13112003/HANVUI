@@ -2,6 +2,7 @@
 // Bài tập viết tự chấm (rule.md mục 3.5): sắp xếp câu, điền chữ, chọn câu đúng nghĩa. Đề và đáp án lấy từ máy chủ.
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import TranslateDiagram from './TranslateDiagram';
 import type { WritingBatch, WritingCheck, WritingItem } from '@/lib/types';
 
 type Kind = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
@@ -87,9 +88,58 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
         ? res.correct
           ? 'Đúng rồi, đây là câu sai ngữ pháp.'
           : 'Chưa đúng. Câu sai là: ' + res.sentence
-        : res.correct
-          ? 'Đúng rồi.'
-          : 'Chưa đúng. Đáp án: ' + res.sentence}
+        : res.altUsed
+          ? 'Đúng rồi. Cách xếp của bạn cũng đúng ngữ pháp; bên dưới là câu mẫu, nghĩa có thể khác câu của bạn.'
+          : res.correct
+            ? 'Đúng rồi.'
+            : 'Chưa đúng. Đáp án: ' + res.sentence}
+    </div>
+  ) : null;
+
+  // Sắp xếp câu: làm xong mới có câu đúng, pinyin, nghĩa và sơ đồ mũi tên.
+  const reveal =
+    res && item.type === 'ORDER' ? (
+      <div className="stack">
+        <div>
+          <div className="han" style={{ fontSize: 22, fontWeight: 700 }}>
+            {res.sentence}
+          </div>
+          {res.pinyin ? <div className="py">{res.pinyin}</div> : null}
+          <div style={{ fontWeight: 600 }}>{res.vi}</div>
+        </div>
+        {res.tokens && res.natural ? <TranslateDiagram data={{ tokens: res.tokens, natural: res.natural }} dir="zh2vi" /> : null}
+      </div>
+    ) : null;
+
+  // Giải thích đáp án: chỉ có ở bài luyện ngữ pháp; hiện sau khi đã chấm, dù đúng hay sai.
+  const pickedOpt = item.type === 'FILL' || item.type === 'CHOOSE' || item.type === 'WRONG' ? picked[0] : undefined;
+  const why = res?.why ? (
+    <div className="why">
+      <b className="why-h">Vì sao?</b>
+      {!res.correct && pickedOpt && res.why.no[pickedOpt] ? (
+        <p className="why-no">
+          <span className="han">✗ {pickedOpt}</span>
+          {' — '}
+          {res.why.no[pickedOpt]}
+        </p>
+      ) : null}
+      <p className="why-ok">
+        <span className="why-tag">✓ Đáp án đúng</span> {res.why.ok}
+      </p>
+      {Object.entries(res.why.no).filter(([o]) => o !== pickedOpt || res.correct).length ? (
+        <div className="why-more">
+          <span className="why-tag">Các lựa chọn còn lại</span>
+          {Object.entries(res.why.no)
+            .filter(([o]) => o !== pickedOpt || res.correct)
+            .map(([o, t]) => (
+              <p key={o}>
+                <span className="han">{o}</span>
+                {' — '}
+                {t}
+              </p>
+            ))}
+        </div>
+      ) : null}
     </div>
   ) : null;
 
@@ -111,7 +161,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
           {n + 1}/{batch.items.length} · HSK {item.level}
         </span>
       </div>
-      <p className="muted">{item.vi}</p>
+      {item.vi ? <p className="muted">{item.vi}</p> : null}
 
       {item.type === 'ORDER' && item.tiles ? (
         <>
@@ -133,6 +183,8 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
             })}
           </div>
           {verdict}
+          {reveal}
+          {why}
           {!res ? (
             <button className="btn primary" disabled={picked.length !== item.tiles.length} onClick={() => check(picked)}>
               Kiểm tra
@@ -162,6 +214,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
             ))}
           </div>
           {verdict}
+          {why}
         </>
       ) : null}
 
@@ -180,6 +233,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
             ))}
           </div>
           {verdict}
+          {why}
         </>
       ) : null}
 

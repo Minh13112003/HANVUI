@@ -53,11 +53,10 @@ export default function SignInPage() {
             <span className="wm" aria-hidden="true">
               学
             </span>
-            <span className="eyebrow">Vừa học vừa chơi</span>
-            <div className="hnum2">
-              12 chủ đề <span>· hội thoại, viết chữ, sự kiện truyện</span>
+            <div className="hnum2" style={{ fontSize: 26 }}>
+              HanVui
             </div>
-            <p className="hsub">Nghe trước, trả lời, rồi mới xem lời thoại. Mỗi ngày làm nhiệm vụ để có lượt gợi ý.</p>
+            <span className="hsub">汉语 · 听 说 读 写</span>
           </div>
 
           <div className="seg" role="tablist">

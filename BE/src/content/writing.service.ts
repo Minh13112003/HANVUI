@@ -3,7 +3,10 @@ import { equivHsk2, OPEN_LEVEL } from '../common/hsk.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 type WType = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
-type Data = { parts?: string[]; alt?: string[]; options?: string[]; answer?: string };
+type Token = { zh: string; py: string; vi: string; save?: string };
+/** Giải thích đáp án (chỉ bài luyện ngữ pháp có): ok = vì sao đáp án đúng; no = vì sao từng lựa chọn sai (khóa là nội dung lựa chọn). */
+type Why = { ok: string; no: Record<string, string> };
+type Data = { parts?: string[]; alt?: string[]; options?: string[]; answer?: string; tokens?: Token[]; natural?: { vi: string; at: number }[]; why?: Why };
 
 const shuffle = <T>(a: T[]): T[] => {
   const r = [...a];
@@ -36,7 +39,8 @@ export class WritingService {
     const items = [...fresh, ...rest].slice(0, Math.min(Math.max(count, 1), 20)).map((r) => {
       const d = r.data as Data;
       const base = { id: r.id, level: r.level, type: r.type, vi: r.vi };
-      if (r.type === 'ORDER') return { ...base, tiles: shuffle(d.parts ?? []) };
+      // Sắp xếp câu: không gửi câu tiếng Việt, làm xong mới có (rule.md mục 3.5).
+      if (r.type === 'ORDER') return { id: r.id, level: r.level, type: r.type, tiles: shuffle(d.parts ?? []) };
       if (r.type === 'FILL') return { ...base, parts: d.parts, options: shuffle(d.options ?? []) };
       return { ...base, options: shuffle(d.options ?? []) };
     });
@@ -53,11 +57,13 @@ export class WritingService {
     const d = item.data as Data;
     let correct = false;
     let shown = '';
+    let altUsed = false;
     if (item.type === 'ORDER') {
       if (!Array.isArray(answer)) throw new BadRequestException('Cần gửi mảng các phần đã sắp xếp');
       const right = (d.parts ?? []).join('');
       shown = right;
       correct = [right, ...(d.alt ?? [])].some((r) => norm(r) === norm(answer.join('')));
+      altUsed = correct && norm(right) !== norm(answer.join(''));
     } else {
       if (typeof answer !== 'string') throw new BadRequestException('Cần gửi chuỗi đã chọn');
       shown = d.answer ?? '';
@@ -71,7 +77,9 @@ export class WritingService {
     });
     // Câu đầy đủ để hiển thị lại (điền chữ: ghép chỗ trống bằng đáp án đúng).
     const full = item.type === 'FILL' ? (d.parts ?? []).map((p) => p || d.answer).join('') : shown;
-    return { correct, answer: shown, sentence: full, vi: item.vi };
+    const reveal = item.type === 'ORDER' && d.tokens && d.natural ? { altUsed, pinyin: d.tokens.map((t) => t.py).join(' '), tokens: d.tokens, natural: d.natural } : {};
+    // Giải thích chỉ trả sau khi đã chấm, không nằm trong đề gửi cho người học.
+    return { correct, answer: shown, sentence: full, vi: item.vi, ...reveal, ...(d.why ? { why: d.why } : {}) };
   }
 
   async stats(userId: string) {
@@ -97,8 +105,9 @@ export class WritingService {
     });
     return rows.map((r) => {
       const d = r.data as Data;
-      const base = { id: r.id, level: r.level, type: r.type, vi: r.vi, done: r.done[0] ? { correct: r.done[0].correct } : null };
-      if (r.type === 'ORDER') return { ...base, tiles: shuffle(d.parts ?? []) };
+      const done = r.done[0] ? { correct: r.done[0].correct } : null;
+      const base = { id: r.id, level: r.level, type: r.type, vi: r.vi, done };
+      if (r.type === 'ORDER') return { id: r.id, level: r.level, type: r.type, done, tiles: shuffle(d.parts ?? []) };
       if (r.type === 'FILL') return { ...base, parts: d.parts, options: shuffle(d.options ?? []) };
       return { ...base, options: shuffle(d.options ?? []) };
     });

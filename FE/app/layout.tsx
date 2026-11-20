@@ -6,7 +6,7 @@ import SwRegister from './sw-register';
 import './globals.css';
 import './theme.css';
 import './theme-v2.css';
-import './theme-sky.css';
+import './theme-bt.css';
 
 // Chữ Hán dùng phông có sẵn của máy (Noto Serif SC / PingFang / Microsoft YaHei) như bản demo:
 // phông CJK rất nặng, tải về sẽ làm app chậm trên điện thoại.
@@ -30,8 +30,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#EEF2F0' },
-    { media: '(prefers-color-scheme: dark)', color: '#0D1614' },
+    { media: '(prefers-color-scheme: light)', color: '#EEF8FF' },
+    { media: '(prefers-color-scheme: dark)', color: '#0A1A2B' },
   ],
 };
 
@@ -39,11 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={ui.variable}>
       <head>
-        {/* Đặt giao diện sáng/tối và màu chủ đề trước khi vẽ để không bị nháy màu. */}
+        {/* Đặt giao diện sáng/tối trước khi vẽ để không bị nháy màu. Chỉ còn một chủ đề màu (Biển & Trời). */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var d=document.documentElement,t=localStorage.getItem('hv.theme'),p=localStorage.getItem('hv.palette');if(t==='light'||t==='dark')d.setAttribute('data-theme',t);if(p==='sky')d.setAttribute('data-palette',p)}catch(e){}",
+              "try{var d=document.documentElement,t=localStorage.getItem('hv.theme');if(t==='light'||t==='dark')d.setAttribute('data-theme',t)}catch(e){}",
           }}
         />
       </head>

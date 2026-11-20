@@ -397,8 +397,17 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       const row = await prisma.writingItem.findUniqueOrThrow({ where: { id: fill.id } });
       const ok = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: fill.id, answer: (row.data as { answer: string }).answer }).expect(200);
       expect(ok.body.correct).toBe(true);
+      // giải thích đáp án: không nằm trong đề, chỉ trả sau khi chấm; có lý do cho từng lựa chọn sai
+      expect(JSON.stringify(d.body.practice)).not.toContain('"why"');
+      expect(ok.body.why.ok.length).toBeGreaterThan(20);
+      const wrongOpts = Object.keys(ok.body.why.no);
+      expect(wrongOpts.length).toBeGreaterThan(0);
+      expect(wrongOpts).not.toContain((row.data as { answer: string }).answer);
+      const bad = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: fill.id, answer: wrongOpts[0] }).expect(200);
+      expect(bad.body.correct).toBe(false);
+      expect(bad.body.why.no[wrongOpts[0]].length).toBeGreaterThan(10);
       const after = await request(http()).get('/api/v1/grammar').set(u.auth).expect(200);
-      expect(after.body.points.find((p: { slug: string }) => p.slug === 'ma-ne').practice).toMatchObject({ total: 5, done: 1, correct: 1 });
+      expect(after.body.points.find((p: { slug: string }) => p.slug === 'ma-ne').practice).toMatchObject({ total: 5, done: 1, correct: 0 });
     });
 
     it('mã quà: sai mã 404, đúng mã +999 lượt, dùng lại 400', async () => {
@@ -676,6 +685,7 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(JSON.stringify(g.body)).not.toContain('"answer"');
       const item = g.body.items[0];
       expect(item.level).toBe(1);
+      expect(item.vi).toBeUndefined();
       const row = await prisma.writingItem.findUniqueOrThrow({ where: { id: item.id } });
       const parts = (row.data as { parts: string[] }).parts;
       const bad = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: item.id, answer: [...parts].reverse() }).expect(200);
@@ -683,6 +693,16 @@ describe.skipIf(!run)('Tài khoản mới, mở hết từ khóa, hộp thư, đ
       expect(bad.body.answer).toBe(parts.join(''));
       const ok = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: item.id, answer: parts }).expect(200);
       expect(ok.body.correct).toBe(true);
+      expect(ok.body.vi).toBe(row.vi);
+      expect(ok.body.altUsed).toBe(false);
+      expect(ok.body.tokens).toHaveLength(parts.length);
+      expect(ok.body.natural.length).toBeGreaterThan(0);
+      // Câu khác đúng ngữ pháp cũng được nhận: 我不认识他 và 他不认识我 dùng chung bộ thẻ.
+      const swap = (await prisma.writingItem.findMany({ where: { type: 'ORDER', level: 1 } })).find((r) => (r.data as { parts: string[] }).parts.join('') === '我不认识他')!;
+      const swapped = await request(http()).post('/api/v1/writing/check').set(u.auth).send({ itemId: swap.id, answer: ['他', '不', '认识', '我'] }).expect(200);
+      expect(swapped.body.correct).toBe(true);
+      expect(swapped.body.altUsed).toBe(true);
+      expect(swapped.body.sentence).toBe('我不认识他');
 
       const fill = await request(http()).get('/api/v1/writing?type=FILL&count=1').set(u.auth).expect(200);
       const fr = await prisma.writingItem.findUniqueOrThrow({ where: { id: fill.body.items[0].id } });

@@ -14,7 +14,7 @@ type Mode = 'stroke' | 'grammar' | 'order' | 'fill' | 'choose';
 
 export default function WritePage() {
   const { user } = useAuth();
-  const [mode, setMode] = useState<Mode>('stroke');
+  const [mode, setMode] = useState<Mode | null>(null);
   const [words, setWords] = useState<string[]>([]);
   const [pick, setPick] = useState<string>('');
 
@@ -47,34 +47,49 @@ export default function WritePage() {
     })();
   }, [user]);
 
+  const TABS: { m: Mode; label: string; tag: string; zh: string; art: string }[] = [
+    { m: 'stroke', label: 'Tập viết nét', tag: 'Cơ bản', zh: '笔画', art: '永' },
+    { m: 'grammar', label: 'Ngữ pháp', tag: 'HSK 1-4', zh: '语法', art: '法' },
+    { m: 'order', label: 'Sắp xếp câu', tag: 'HSK 2-3', zh: '连词', art: '我 · 喜欢' },
+    { m: 'fill', label: 'Điền chữ', tag: 'Trắc nghiệm', zh: '填空', art: '看 ?' },
+    { m: 'choose', label: 'Chọn câu đúng', tag: 'Ngữ pháp', zh: '正误', art: '对 · 错' },
+  ];
+
   return (
     <Shell title="Viết">
-      <div className="stack">
-        <div className="row between">
-          <h1>Viết</h1>
-          <span className="row" style={{ gap: 8 }}>
-            <span className="tag">tự chấm</span>
+      <div className="stack wv">
+        {mode === null ? (
+          <>
+            <div className="row between">
+              <span className="muted" style={{ fontWeight: 700 }}>Chọn cách luyện</span>
+              <WriteHelpButton />
+            </div>
+            <div className="wv-grid">
+              {TABS.map((t) => (
+                <button key={t.m} className="wv-card" onClick={() => setMode(t.m)}>
+                  <span className="row between">
+                    <span className="wv-tag">{t.tag}</span>
+                    <span className="wv-zh han">{t.zh}</span>
+                  </span>
+                  <span className="wv-art han">{t.art}</span>
+                  <b>{t.label}</b>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="wv-pills" role="tablist" aria-label="Cách luyện viết">
+            <button className="wv-back" onClick={() => setMode(null)} aria-label="Tất cả">
+              ‹
+            </button>
+            {TABS.map((t) => (
+              <button key={t.m} role="tab" aria-selected={mode === t.m} className={'wv-pill' + (mode === t.m ? ' on' : '')} onClick={() => setMode(t.m)}>
+                {t.label.replace('Tập viết nét', 'Nét').replace(' câu đúng', ' câu')}
+              </button>
+            ))}
             <WriteHelpButton />
-          </span>
-        </div>
-
-        <div className="seg">
-          <button className={mode === 'stroke' ? 'on' : ''} onClick={() => setMode('stroke')}>
-            Nét
-          </button>
-          <button className={mode === 'grammar' ? 'on' : ''} onClick={() => setMode('grammar')}>
-            Ngữ pháp
-          </button>
-          <button className={mode === 'order' ? 'on' : ''} onClick={() => setMode('order')}>
-            Sắp xếp
-          </button>
-          <button className={mode === 'fill' ? 'on' : ''} onClick={() => setMode('fill')}>
-            Điền
-          </button>
-          <button className={mode === 'choose' ? 'on' : ''} onClick={() => setMode('choose')}>
-            Chọn câu
-          </button>
-        </div>
+          </div>
+        )}
 
         {mode === 'stroke' ? (
           <>

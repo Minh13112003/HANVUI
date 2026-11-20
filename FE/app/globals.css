@@ -506,7 +506,7 @@ select.hv-plain{font:inherit}
 .dg-tier{display:flex;justify-content:center;gap:6px;position:relative;z-index:1}
 .dg-gap{height:58px}
 .dg-gap.tall{height:104px}
-.dg-cell{display:grid;justify-items:center;min-width:40px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);white-space:nowrap}
+.dg-cell{touch-action:manipulation;display:grid;justify-items:center;min-width:40px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);white-space:nowrap}
 .dg-cell small{font-size:11.5px;line-height:1.3;color:var(--muted)}
 .dg-cell .han{font-size:21px;font-weight:700;line-height:1.3}
 .dg-lit{width:100%;margin-top:4px;padding-top:3px;border-top:1px dashed var(--line);text-align:center;font-size:12.5px;font-weight:600;color:var(--accent)}
@@ -520,4 +520,5 @@ select.hv-plain{font:inherit}
 .dg-box.lit g:not(.on) .dg-line,.dg-box.lit g:not(.on) .dg-head{opacity:.18}
 .dg-box.lit g.on .dg-line{stroke:var(--seal);stroke-width:2.8;opacity:1}
 .dg-box.lit g.on .dg-head{fill:var(--seal);opacity:1}
+.dg-hint{display:block;margin-top:6px;font-size:12px}
 .dg-tiles .tile{width:auto;height:auto;min-width:48px;min-height:48px;padding:6px 12px;white-space:nowrap;word-break:keep-all}

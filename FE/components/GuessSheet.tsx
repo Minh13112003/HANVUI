@@ -88,8 +88,8 @@ export default function GuessSheet({ lessonId, text, onSolved }: { lessonId: str
     <>
       <Confetti burst={burst} />
       <div className="row between">
-        <h2>Nhập từ khóa</h2>
-        <span className="pill">{state?.tokens ?? 0} lượt</span>
+        <h2 className="gs-t">Ghép từ khóa</h2>
+        <span className="pill">{picked.length} chữ · 💡 {state?.tokens ?? 0}</span>
       </div>
 
       {res ? (
@@ -133,6 +133,7 @@ export default function GuessSheet({ lessonId, text, onSolved }: { lessonId: str
         <div className="alert">Bạn đang bị khóa đoán {lockedLeft} phút. Hãy học thêm một bài trong lúc chờ.</div>
       ) : null}
 
+      <div className="gs-ans">
       <div className="ansrow" aria-label="Đáp án đang ghép">
         {picked.length === 0 && !typed ? (
           <span className="muted" style={{ fontSize: 13, paddingInline: 6 }}>
@@ -146,6 +147,18 @@ export default function GuessSheet({ lessonId, text, onSolved }: { lessonId: str
         ))}
       </div>
 
+      <button className="gs-clear" disabled={!picked.length} onClick={() => setPicked([])}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 5H9l-6 7 6 7h12zM12 9l6 6M18 9l-6 6" />
+        </svg>
+        Xóa
+      </button>
+      </div>
+
+      <div className="sec-lab">
+        <span>Chọn chữ</span>
+        <span>{tiles.length} chữ</span>
+      </div>
       <div className="tiles">
         {tiles.map((ch, i) => (
           <button key={i} className="tile" disabled={picked.includes(i) || busy} onClick={() => setPicked([...picked, i])}>
@@ -154,23 +167,23 @@ export default function GuessSheet({ lessonId, text, onSolved }: { lessonId: str
         ))}
       </div>
 
-      <label className="field">
-        Hoặc gõ chữ Hán / pinyin (có dấu hay không đều được)
+      <label className="field gs-type">
+        Gõ chữ Hán / Pinyin
         <input
           className="hanin"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
-          placeholder="ví dụ: 咖啡 hoặc kafei"
+          placeholder="咖啡 / kafei"
           autoComplete="off"
         />
       </label>
 
       <div className="row" style={{ gap: 8 }}>
-        <button className="btn primary grow" disabled={!answer || busy || lockedLeft > 0} onClick={guess}>
-          Đoán
-        </button>
         <button className="btn" onClick={closeSheet}>
           Đóng
+        </button>
+        <button className="btn primary grow" disabled={!answer || busy || lockedLeft > 0} onClick={guess}>
+          Đoán →
         </button>
       </div>
 
@@ -207,9 +220,6 @@ export default function GuessSheet({ lessonId, text, onSolved }: { lessonId: str
         </details>
       ) : null}
 
-      <p className="muted" style={{ fontSize: 12 }}>
-        Phải mở gợi ý 1 của một ô mới đoán được ô đó. Ô có màu là ô có gợi ý 2 chỉ tới bài bạn vừa nghe.
-      </p>
       <button className="btn ghost sm" onClick={optOut}>
         Không tham gia sự kiện
       </button>
