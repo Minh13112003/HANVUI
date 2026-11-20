@@ -8,6 +8,7 @@ import Shell from '@/components/Shell';
 import Tips from '@/components/Tips';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { usePathProgress } from '@/lib/path-progress';
 import { greeting, levelName, minutes, standardName } from '@/lib/text';
 import type { EventState, LessonCard, Notebook } from '@/lib/types';
 
@@ -36,6 +37,11 @@ export default function HomePage() {
   const [today, setToday] = useState<Today | null>(null);
   const [nb, setNb] = useState<Notebook | null>(null);
   const [lessons, setLessons] = useState<LessonCard[] | null>(null);
+  const [reads, setReads] = useState<LessonCard[] | null>(null);
+  const [vp, setVp] = useState<{ have: number; target: number; percent: number } | null>(null);
+  const [ws, setWs] = useState<{ done: number; total: number } | null>(null);
+  const [tip, setTip] = useState<{ zh: string; text: string } | null>(null);
+  const road = usePathProgress(user?.id);
 
   useEffect(() => {
     if (!user) return;
@@ -43,7 +49,31 @@ export default function HomePage() {
     api<Today>('/event/today').then(setToday).catch(() => {});
     api<Notebook>('/notebook?view=day').then(setNb).catch(() => {});
     api<LessonCard[]>('/lessons').then(setLessons).catch(() => {});
+    api<LessonCard[]>('/lessons?kind=READING').then(setReads).catch(() => {});
+    api<{ have: number; target: number; percent: number }>('/vocab/progress').then(setVp).catch(() => {});
+    api<{ done: number; total: number }>('/writing/stats').then(setWs).catch(() => {});
   }, [user]);
+
+  useEffect(() => {
+    const words = nb?.groups.flatMap((g) => g.words.map((w) => w.zh)).slice(0, 6) ?? [];
+    let alive = true;
+    (async () => {
+      for (const zh of words) {
+        try {
+          const r = await api<{ mnemonic?: string | null }>('/words/lookup?zh=' + encodeURIComponent(zh));
+          if (r.mnemonic && alive) {
+            setTip({ zh, text: r.mnemonic });
+            return;
+          }
+        } catch {
+          /* thử từ kế */
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [nb]);
 
   const doneLessons = lessons?.filter((l) => l.status === 'done').length ?? 0;
   const pctListen = lessons?.length ? Math.round((doneLessons / lessons.length) * 100) : 0;
@@ -117,12 +147,25 @@ export default function HomePage() {
         </section>
 
         {user && (user.hskStandard === 'HSK3' ? user.hskLevel <= 1 : user.hskLevel <= 2) ? (
-          <Link href="/lo-trinh" className="card row" style={{ gap: 12 }}>
-            <span className="han" style={{ fontSize: 28, lineHeight: 1, color: 'var(--accent)' }} aria-hidden="true">
-              路
-            </span>
-            <b className="grow">Lộ trình cho người mới</b>
-            <span className="chev">›</span>
+          <Link href="/lo-trinh" className="card road">
+            <div className="row between" style={{ gap: 10 }}>
+              <span className="road-t">
+                <span className="han" aria-hidden="true">
+                  路
+                </span>
+                Lộ trình cho người mới
+              </span>
+              <b className="road-p">{road.all.length ? Math.round((road.doneCount / road.all.length) * 100) : 0}%</b>
+            </div>
+            <div className="tbar">
+              <i style={{ width: (road.all.length ? (road.doneCount / road.all.length) * 100 : 0) + '%' }} />
+            </div>
+            <div className="row between road-f">
+              <span>
+                {road.doneCount}/{road.all.length} bước
+              </span>
+              {road.next ? <span className="road-n">Tiếp: {road.next.s.title}</span> : <span className="road-n">Đã xong</span>}
+            </div>
           </Link>
         ) : null}
 
@@ -169,17 +212,28 @@ export default function HomePage() {
               <span className="wmh" aria-hidden="true">
                 {s.zh}
               </span>
-              {s.name === 'Nghe' && lessons?.length ? (
-                <>
-                  <span className="sprog">
-                    {doneLessons}/{lessons.length} bài
-                  </span>
-                  <span className="sbar">
-                    <i style={{ width: pctListen + '%' }} />
-                  </span>
-                </>
-              ) : null}
-              {s.name === 'Từ vựng' && nb ? <span className="sprog">{nb.total} từ đã lưu</span> : null}
+              {(() => {
+                const p =
+                  s.name === 'Nghe' && lessons?.length
+                    ? { n: doneLessons, t: lessons.length, u: 'bài' }
+                    : s.name === 'Đọc' && reads?.length
+                      ? { n: reads.filter((l) => l.status === 'done').length, t: reads.length, u: 'bài' }
+                      : s.name === 'Viết' && ws?.total
+                        ? { n: ws.done, t: ws.total, u: 'câu' }
+                        : s.name === 'Từ vựng' && vp
+                          ? { n: vp.have, t: vp.target, u: 'từ' }
+                          : null;
+                return p ? (
+                  <>
+                    <span className="sprog">
+                      {p.n}/{p.t} {p.u}
+                    </span>
+                    <span className="sbar">
+                      <i style={{ width: Math.min(100, (p.n / p.t) * 100) + '%' }} />
+                    </span>
+                  </>
+                ) : null;
+              })()}
             </Link>
           ))}
         </section>
@@ -198,6 +252,11 @@ export default function HomePage() {
             <div className="evt" style={{ fontSize: 21, fontWeight: 800 }}>
               {ev.story?.title}
             </div>
+            {chapter ? (
+              <span className="hsub">
+                Chương {chapter.idx} · {chapter.hoi.filter((h) => h.opened).length}/{chapter.hoi.length} hồi
+              </span>
+            ) : null}
             <div className="dots" aria-hidden="true">
               {(chapter?.cells ?? []).map((c) => (
                 <span
@@ -260,6 +319,19 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </section>
+        ) : null}
+
+        {tip ? (
+          <section className="card tipc">
+            <span className="tipc-i" aria-hidden="true">
+              💡
+            </span>
+            <div className="grow">
+              <b>Mẹo nhớ nhanh</b>
+              <span className="han tipc-z">{tip.zh}</span>
+              <p>{tip.text}</p>
+            </div>
           </section>
         ) : null}
 
