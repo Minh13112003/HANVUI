@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { loadWordAudio } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
-import type { EventState, Notebook } from '@/lib/types';
+import type { EventState } from '@/lib/types';
 import TabBar from './TabBar';
 
 export default function Shell({ children, title }: { children: React.ReactNode; title?: string }) {
@@ -20,8 +20,9 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
     else if (window.history.length > 1) router.back();
     else router.push('/' + (path.split('/')[1] ?? ''));
   };
-  const [saved, setSaved] = useState<number | null>(null);
   const [dot, setDot] = useState(false);
+  const [tokens, setTokens] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
   const [mailDot, setMailDot] = useState(false);
 
   useEffect(() => {
@@ -31,14 +32,15 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
   useEffect(() => {
     if (!user) return;
     loadWordAudio(() => api<Record<string, string>>('/words/audio'));
-    api<Notebook>('/notebook?view=day')
-      .then((n) => setSaved(n.total))
-      .catch(() => {});
     api<{ unread: number; unclaimed: number }>('/mailbox/counts')
       .then((c) => setMailDot(c.unread + c.unclaimed > 0))
       .catch(() => {});
     api<EventState>('/event')
-      .then((e) => setDot(!!e.active && !e.optedOut && (e.tokens ?? 0) > 0))
+      .then((e) => {
+        setDot(!!e.active && !e.optedOut && (e.tokens ?? 0) > 0);
+        setTokens(e.tokens ?? 0);
+        setStreak(e.week?.login ?? 0);
+      })
       .catch(() => {});
   }, [user]);
 
@@ -65,9 +67,15 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
               {title ? <small>{title}</small> : null}
             </div>
           </Link>
-          <Link href="/so-tay" className="pill">
-            {saved === null ? '…' : saved + ' từ đã lưu'}
-          </Link>
+          <div className="topr">
+            <Link href="/su-kien" className="hchip" aria-label="Chuỗi ngày và lượt gợi ý">
+              <span aria-hidden="true">🔥</span> {streak}
+              <span aria-hidden="true" style={{ marginLeft: 6 }}>💡</span> {tokens ?? '…'}
+            </Link>
+            <Link href="/them" className="havatar" aria-label="Tài khoản">
+              {(user.displayName || '?').trim().charAt(0).toUpperCase()}
+            </Link>
+          </div>
         </header>
         <main id="view" className="enter">
           {!isRoot ? (

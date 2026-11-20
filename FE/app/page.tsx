@@ -3,7 +3,7 @@
 // thẻ sự kiện và nhiệm vụ tuần (rule.md mục 3.6).
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CountUp, Flame, Medal, Ring } from '@/components/Bits';
+import { CountUp, Medal, Ring } from '@/components/Bits';
 import Shell from '@/components/Shell';
 import Tips from '@/components/Tips';
 import { api } from '@/lib/api';
@@ -62,11 +62,6 @@ export default function HomePage() {
             {greeting()}, {user?.displayName}
           </h1>
           <div className="gchips">
-            {ev?.week?.login ? <Flame days={ev.week.login} /> : null}
-            <span className="gchip">
-              <span aria-hidden="true">💡</span>
-              <CountUp value={ev?.tokens ?? 0} />
-            </span>
             <span className="gchip lv">{user ? standardName(std) + ' | ' + levelName(std, user.hskLevel) : ''}</span>
           </div>
         </section>
@@ -79,8 +74,9 @@ export default function HomePage() {
             <div className="goal-tx">
               <span className="eyebrow">Mục tiêu hôm nay</span>
               <div className="hnum2" style={{ fontSize: 22 }}>
-                {today && today.done >= 3 ? 'Hoàn thành' : today && left > 0 ? '+' + left + ' 💡 đang chờ' : 'Bắt đầu thôi'}
+                {today && today.done >= 3 ? 'Hoàn thành' : today ? 'Nghe & trả lời ' + today.lessonsNeeded + ' bài' : 'Bắt đầu thôi'}
               </div>
+              {today && today.done < 3 && left > 0 ? <span className="hsub">+{left} 💡 đang chờ</span> : null}
               <Link className="btn primary" href="/hoc/nghe">
                 Học tiếp →
               </Link>
@@ -90,32 +86,33 @@ export default function HomePage() {
         </section>
 
         <section className="stats">
-          <Link className="stat" href="/so-tay">
-            <span className="ic han" aria-hidden="true">
-              词
-            </span>
-            <b>
-              <CountUp value={nb?.total ?? 0} />
-            </b>
-            <small>Từ đã lưu</small>
-          </Link>
           <div className="stat">
             <span className="ic han" aria-hidden="true">
-              听
+              连
             </span>
             <b>
-              <CountUp value={doneLessons} />
+              <CountUp value={ev?.week?.login ?? 0} />
             </b>
-            <small>Bài đã nghe</small>
+            <small>Chuỗi học</small>
+          </div>
+          <div className="stat">
+            <span className="ic han" aria-hidden="true">
+              灯
+            </span>
+            <b>
+              <CountUp value={ev?.tokens ?? 0} />
+            </b>
+            <small>Gợi ý sẵn</small>
           </div>
           <div className="stat">
             <span className="ic han" aria-hidden="true">
               时
             </span>
             <b>
-              <CountUp value={Math.floor((today?.onlineSec ?? 0) / 60)} />p
+              <CountUp value={Math.floor((today?.onlineSec ?? 0) / 60)} />
+              <i>p</i>
             </b>
-            <small>Phút học</small>
+            <small>Hôm nay</small>
           </div>
         </section>
 
@@ -172,11 +169,17 @@ export default function HomePage() {
               <span className="wmh" aria-hidden="true">
                 {s.zh}
               </span>
-              {s.name === 'Nghe' ? (
-                <span className="sbar">
-                  <i style={{ width: pctListen + '%' }} />
-                </span>
+              {s.name === 'Nghe' && lessons?.length ? (
+                <>
+                  <span className="sprog">
+                    {doneLessons}/{lessons.length} bài
+                  </span>
+                  <span className="sbar">
+                    <i style={{ width: pctListen + '%' }} />
+                  </span>
+                </>
               ) : null}
+              {s.name === 'Từ vựng' && nb ? <span className="sprog">{nb.total} từ đã lưu</span> : null}
             </Link>
           ))}
         </section>

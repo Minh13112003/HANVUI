@@ -1302,3 +1302,43 @@ body {
   background: var(--accent);
   color: var(--accent-fg);
 }
+
+/* Đầu trang theo Stitch: chuỗi ngày, lượt gợi ý và avatar */
+.topr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--fg);
+  font-weight: 800;
+  font-size: 14px;
+}
+.havatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 800;
+}
+.sprog {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.stat b i {
+  font-style: normal;
+  font-size: 14px;
+}
