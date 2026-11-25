@@ -2,7 +2,10 @@
 // Bài tập viết tự chấm (rule.md mục 3.5): sắp xếp câu, điền chữ, chọn câu đúng nghĩa. Đề và đáp án lấy từ máy chủ.
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import PronCheck from './PronCheck';
+import SpeechCheck from './SpeechCheck';
 import TranslateDiagram from './TranslateDiagram';
+import { play } from '@/lib/audio';
 import type { WritingBatch, WritingCheck, WritingItem } from '@/lib/types';
 
 type Kind = 'ORDER' | 'FILL' | 'CHOOSE' | 'WRONG';
@@ -23,13 +26,14 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
   const [res, setRes] = useState<WritingCheck | null>(null);
   const [err, setErr] = useState('');
   const [hsk4, setHsk4] = useState(false);
+  const [speak, setSpeak] = useState(false);
 
   const load = useCallback(async () => {
     setBatch(null);
     setN(0);
     setScore(0);
     setPicked([]);
-    setRes(null);
+    setRes(null); setSpeak(false);
     setErr('');
     try {
       if (items) setBatch({ items, lockedCount: 0, level: 0 });
@@ -57,7 +61,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
   const next = () => {
     setN((v) => v + 1);
     setPicked([]);
-    setRes(null);
+    setRes(null); setSpeak(false);
   };
 
   if (err) return <div className="alert">{err}</div>;
@@ -114,6 +118,15 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
           {res.pinyin ? <div className="py">{res.pinyin}</div> : null}
           <div className="ord-vi">{res.vi}</div>
         </div>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn sm" onClick={() => play(res.sentence, null, {})}>
+            ▶ Nghe câu
+          </button>
+          <button className="btn sm" onClick={() => setSpeak(!speak)}>
+            🎤 Luyện nói câu
+          </button>
+        </div>
+        {speak ? <PronCheck target={res.sentence} fallback={<SpeechCheck target={res.sentence} />} /> : null}
         {res.tokens && res.natural ? <TranslateDiagram data={{ tokens: res.tokens, natural: res.natural }} dir="zh2vi" /> : null}
       </div>
     ) : null;

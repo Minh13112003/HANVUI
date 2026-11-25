@@ -156,7 +156,7 @@ export default function ReadPage() {
   return (
     <Shell title="Đọc">
       <div className="stack">
-        <h1>Bài đọc</h1>
+        <h1>Bài đọc{cards ? ` · ${cards.length} bài` : ''}</h1>
 
         {!cards ? <p className="muted">Đang tải…</p> : null}
         <div className="stack">
@@ -174,29 +174,35 @@ export default function ReadPage() {
               <Fragment key={c.id}>
               <button
                 id={'read-' + c.id}
-                className="lcard"
+                className={"lc2" + (c.status === 'done' ? ' done' : '')}
                 data-lv={c.level}
                 data-done={c.status === 'done' ? '1' : undefined}
                 onClick={() => toggle(c.id)}
                 aria-expanded={open === c.id}
                 style={{ textAlign: 'left', width: '100%', scrollMarginTop: 72 }}
               >
-                <span className="lg2 han">读</span>
-                <span className="grow">
-                  <b>{c.title}</b>
-                  <small className="lsub muted">
-                    {c.situation} · {c.lines} câu
-                  </small>
-                </span>
-                <span className="lr">
-                  <span className="pill">HSK {c.level}</span>
-                  <small className={c.status === 'done' ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
-                    {c.status === 'done' ? '✓ đã đọc' : 'mới'}
-                  </small>
-                  <span className="chev" aria-hidden="true">
-                    {open === c.id ? '▾' : '▸'}
+                <div className="lc2-top">
+                  <span className="lc2-ic han" aria-hidden="true">
+                    读
                   </span>
-                </span>
+                  <div className="grow">
+                    <span className="lc2-meta">
+                      <span className="lc2-tag">HSK {c.level}</span>
+                    </span>
+                    <b className="lc2-t">{c.title}</b>
+                    <small className="muted">{c.situation}</small>
+                  </div>
+                </div>
+                <div className="lc2-foot">
+                  {c.status === 'done' ? (
+                    <span className="lc2-ok">✓ Đã hoàn thành</span>
+                  ) : (
+                    <>
+                      <span className="lc2-st">{c.lines} câu</span>
+                      <span className="lc2-go soft">{open === c.id ? 'Thu gọn ▴' : 'Đọc ▷'}</span>
+                    </>
+                  )}
+                </div>
               </button>
               {open === c.id ? (
                 <div className="stack">

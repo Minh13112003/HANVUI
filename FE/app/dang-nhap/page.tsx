@@ -33,73 +33,76 @@ export default function SignInPage() {
     }
   };
 
-  return (
-    <div className="app">
-      <header className="top">
-        <div className="brand">
-          <span className="seal" aria-hidden="true">
-            汉
-          </span>
-          <div>
-            <b>HanVui</b>
-            <small>Học tiếng Trung mỗi ngày</small>
-          </div>
-        </div>
-      </header>
+  const [show, setShow] = useState(false);
+  const up = mode === 'up';
 
+  return (
+    <div className="app lg">
       <main id="view" className="enter">
         <div className="stack">
-          <div className="surf" data-g="night">
-            <span className="wm" aria-hidden="true">
-              学
+          <div className="lg-hero">
+            <span className="lg-logo" aria-hidden="true">
+              <i>汉</i>
+              <u />
             </span>
-            <div className="hnum2" style={{ fontSize: 26 }}>
-              HanVui
+            <h1 className="lg-title">
+              Hanvui <span>汉语</span>
+            </h1>
+            <p className="lg-tag">Học tiếng Trung vừa học vừa chơi</p>
+          </div>
+
+          <form className="lg-card stack" onSubmit={go}>
+            <div className="seg pillseg" role="tablist">
+              <button type="button" className={!up ? 'on' : ''} role="tab" aria-selected={!up} onClick={() => setMode('in')}>
+                Đăng nhập
+              </button>
+              <button type="button" className={up ? 'on' : ''} role="tab" aria-selected={up} onClick={() => setMode('up')}>
+                Đăng ký
+              </button>
             </div>
-            <span className="hsub">汉语 · 听 说 读 写</span>
-          </div>
-
-          <div className="seg" role="tablist">
-            <button className={mode === 'in' ? 'on' : ''} role="tab" aria-selected={mode === 'in'} onClick={() => setMode('in')}>
-              Đăng nhập
-            </button>
-            <button className={mode === 'up' ? 'on' : ''} role="tab" aria-selected={mode === 'up'} onClick={() => setMode('up')}>
-              Đăng ký
-            </button>
-          </div>
-
-          <form className="card stack" onSubmit={go}>
-            {mode === 'up' ? (
+            {up ? (
               <label className="field">
                 Tên hiển thị
-                <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} autoComplete="nickname" />
+                <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} autoComplete="nickname" placeholder="ví dụ: Minh" />
               </label>
             ) : null}
             <label className="field">
               Email
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" placeholder="ví dụ: ban@hanvui.vn" />
             </label>
             <label className="field">
-              Mật khẩu {mode === 'up' ? '(tối thiểu 8 ký tự)' : ''}
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                maxLength={72}
-                autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
-              />
+              Mật khẩu {up ? '(tối thiểu 8 ký tự)' : ''}
+              <span className="lg-pw">
+                <input
+                  type={show ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  maxLength={72}
+                  autoComplete={up ? 'new-password' : 'current-password'}
+                />
+                <button type="button" aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShow(!show)}>
+                  {show ? 'Ẩn' : 'Hiện'}
+                </button>
+              </span>
             </label>
             {err ? (
               <div className="alert" style={{ borderColor: 'var(--bad)', background: 'var(--badbg)' }}>
                 {err}
               </div>
             ) : null}
-            <button className="btn primary" disabled={busy}>
-              {busy ? 'Đang xử lý…' : mode === 'in' ? 'Đăng nhập' : 'Tạo tài khoản'}
+            <button className="btn primary lg-go" disabled={busy}>
+              {busy ? 'Đang xử lý…' : up ? 'Tạo tài khoản →' : 'Đăng nhập →'}
             </button>
+            <p className="lg-sw">
+              {up ? 'Đã có tài khoản? ' : 'Chưa có tài khoản? '}
+              <button type="button" onClick={() => setMode(up ? 'in' : 'up')}>
+                {up ? 'Đăng nhập' : 'Đăng ký ngay miễn phí'}
+              </button>
+            </p>
           </form>
+          <p className="lg-foot">♡ Học tiếng Trung nhẹ nhàng như ngắm biển xanh</p>
         </div>
       </main>
     </div>

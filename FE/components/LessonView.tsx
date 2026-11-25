@@ -227,8 +227,12 @@ export default function LessonView({ id }: { id: string }) {
               className={'castc' + (r.gender === 'f' ? ' f' : '')}
               onClick={() => play(r.label, null, { gender: r.gender, pitchRange: r.pitchRange })}
             >
-              <i />
-              <b>{r.label}</b>· {r.gender === 'f' ? 'nữ' : 'nam'}, giọng {r.pitchRange === 1 ? 'trầm' : r.pitchRange === 3 ? 'cao' : 'vừa'}
+              <i className="castav">{r.label.trim().charAt(0)}</i>
+              <span className="castx">
+                <b>{r.label}</b>
+                <small>{r.gender === 'f' ? 'Nữ' : 'Nam'} · giọng {r.pitchRange === 1 ? 'trầm' : r.pitchRange === 3 ? 'cao' : 'vừa'}</small>
+              </span>
+              <span className="castplay" aria-hidden="true">▶</span>
             </button>
           ))}
         </div>
@@ -306,7 +310,8 @@ export default function LessonView({ id }: { id: string }) {
                             })
                           }
                         >
-                          {t.t}
+                          {showPy && t.p ? <small className="wpy">{t.p}</small> : null}
+                          <span className="wzh">{t.t}</span>
                         </button>
                       ),
                     )}

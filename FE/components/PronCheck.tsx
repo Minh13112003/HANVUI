@@ -195,17 +195,20 @@ export default function PronCheck({ target, fallback }: { target: string; fallba
 
       {shown ? (
         <>
-          <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-            <span className="hnum2" style={{ fontSize: 44, color: shown.color }}>
-              {result?.score}
+          <div className="scorering" style={{ ['--p' as string]: (result?.score ?? 0) + '%', ['--c' as string]: shown.color }}>
+            <span>
+              <b>{result?.score}</b>
+              <small>/100</small>
             </span>
-            <b style={{ color: shown.color }}>{shown.label}</b>
           </div>
+          <b className="center" style={{ color: shown.color, textAlign: 'center' }}>
+            {shown.label}
+          </b>
           <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
             {result?.syllables?.map((s, k) => {
               const note = NOTE[s.verdict]?.(s);
               return (
-                <span key={k} style={{ border: `2px solid ${note ? 'var(--bad)' : 'var(--good)'}`, borderRadius: 10, padding: '4px 8px', textAlign: 'center', minWidth: 44 }}>
+                <span key={k} className={'sylc ' + (note ? 'no' : 'ok')}>
                   <span className="han" style={{ fontSize: 22, display: 'block' }}>
                     {s.zh || s.heard}
                   </span>
