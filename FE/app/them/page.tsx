@@ -9,7 +9,7 @@ import { api, authApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { levelName, standardName } from '@/lib/text';
 import { useUi } from '@/lib/ui';
-import type { MailCounts } from '@/lib/types';
+import type { EventState, InventoryItem, MailCounts } from '@/lib/types';
 
 type Theme = 'auto' | 'light' | 'dark';
 /** Quy đổi gần đúng HSK 3.0 → 2.0 (xem BE/src/common/hsk.ts). */
@@ -25,10 +25,19 @@ export default function MorePage() {
   const [redeeming, setRedeeming] = useState(false);
   const [reward, setReward] = useState<RewardInfo | null>(null);
   const [mail, setMail] = useState<MailCounts | null>(null);
+  const [ev, setEv] = useState<EventState | null>(null);
+  const [bag, setBag] = useState<number | null>(null);
+  const [codeOpen, setCodeOpen] = useState(false);
 
   useEffect(() => {
     api<MailCounts>('/mailbox/counts')
       .then(setMail)
+      .catch(() => {});
+    api<EventState>('/event')
+      .then(setEv)
+      .catch(() => {});
+    api<InventoryItem[]>('/event/inventory')
+      .then((l) => setBag(l.filter((i) => !i.openedAt).length))
       .catch(() => {});
   }, []);
 
@@ -80,204 +89,240 @@ export default function MorePage() {
     }
   };
 
+  const next = (user?.hskLevel ?? 1) + 1;
+  const initial = (user?.displayName || '?').trim().charAt(0).toUpperCase();
+
   return (
     <Shell title="Tài khoản">
-      <div className="stack">
-        <section className="surf" data-g="jade">
-          <span className="wm" aria-hidden="true">
-            我
-          </span>
-          <div className="row between">
-            <div className="grow">
-              <span className="eyebrow">Tài khoản</span>
-              <div className="hnum2" style={{ fontSize: 22 }}>
-                {user?.displayName}
+      <div className="stack acc">
+        <section className="card acc-prof">
+          <div className="acc-top">
+            <span className="acc-av" aria-hidden="true">
+              {initial}
+            </span>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <h1 className="acc-name">{user?.displayName}</h1>
+              <div className="acc-sub">
+                <span className="acc-lv">{levelLabel}</span>
+                <small className="muted">{user?.email}</small>
               </div>
-              <span className="hsub">{user?.email}</span>
             </div>
-            <span className="hpill">{user?.isVip ? 'VIP' : 'Thường'}</span>
           </div>
-          <span className="hsub">
-            {levelLabel}
-          </span>
+          <div className="acc-stats">
+            <span>
+              <b>
+                <span aria-hidden="true">🔥</span> {ev?.week?.login ?? 0}
+              </b>
+              <small>Chuỗi ngày</small>
+            </span>
+            <span>
+              <b>
+                <span aria-hidden="true">💡</span> {ev?.tokens ?? 0}
+              </b>
+              <small>Gợi ý</small>
+            </span>
+            <span>
+              <b>
+                <span aria-hidden="true">⭐</span> {ev?.points ?? 0}
+              </b>
+              <small>Điểm sao</small>
+            </span>
+          </div>
         </section>
 
-        <Link className="card row" href="/them/hop-thu" style={{ gap: 12 }}>
-          <span className="mail-av han" data-s="ADMIN" aria-hidden="true">
-            信
-          </span>
-          <span className="grow">
-            <b>Hộp thư</b>
-            {mail?.unclaimed ? (
+        <section className="card acc-set">
+          <div className="row between">
+            <h2>Cài đặt học tập</h2>
+            <span className="acc-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="m2 9 10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" />
+              </svg>
+            </span>
+          </div>
+          <div className="acc-row">
+            <span className="acc-l">Chuẩn HSK</span>
+            <div className="seg pillseg acc-seg" role="tablist" aria-label="Chuẩn HSK">
+              <button className={user?.hskStandard === 'HSK2' ? 'on' : ''} role="tab" aria-selected={user?.hskStandard === 'HSK2'} disabled={busy} onClick={() => patch({ hskStandard: 'HSK2' })}>
+                HSK 2.0
+              </button>
+              <button className={user?.hskStandard === 'HSK3' ? 'on' : ''} role="tab" aria-selected={user?.hskStandard === 'HSK3'} disabled={busy} onClick={() => patch({ hskStandard: 'HSK3' })}>
+                HSK 3.0
+              </button>
+            </div>
+          </div>
+          <div className="acc-row">
+            <span className="acc-l">
+              Cấp hiện tại
               <small className="muted" style={{ display: 'block' }}>
-                {mail.unclaimed} 🎁
+                {user?.hskStandard === 'HSK3' ? `≈ ${levelName('HSK2', HSK3_TO_HSK2[Math.min(user.hskLevel, 9) - 1])} (HSK 2.0)` : levelName(std, user?.hskLevel ?? 1)}
               </small>
-            ) : null}
-          </span>
-          {mail?.unread ? (
-            <span className="badge-n" aria-label={`${mail.unread} thư chưa đọc`}>
-              {mail.unread}
             </span>
-          ) : null}
-          <span className="chev">›</span>
-        </Link>
-
-        {user?.role === 'ADMIN' ? (
-          <Link className="card row" href="/admin" style={{ gap: 12 }}>
-            <span className="mail-av han" data-s="ADMIN" aria-hidden="true">
-              管
+            <span className="acc-step">
+              <button aria-label="Hạ cấp" disabled={busy || (user?.hskLevel ?? 1) <= 1} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) - 1 })}>
+                −
+              </button>
+              <b>{levelName(std, user?.hskLevel ?? 1)}</b>
+              <button aria-label="Lên cấp" disabled={busy || (user?.hskLevel ?? 1) >= levels} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) + 1 })}>
+                +
+              </button>
             </span>
-            <span className="grow">
-              <b>Quản trị bài học</b>
-            </span>
-            <span className="chev">›</span>
-          </Link>
-        ) : null}
-
-        <section className="card stack">
-
-          <div>
-            <span className="eyebrow2">Chuẩn HSK</span>
-            <div className="seg" role="tablist" aria-label="Chuẩn HSK">
-              <button
-                className={user?.hskStandard === 'HSK2' ? 'on' : ''}
-                role="tab"
-                aria-selected={user?.hskStandard === 'HSK2'}
-                disabled={busy}
-                onClick={() => patch({ hskStandard: 'HSK2' })}
-              >
-                HSK 2.0 <small>HSK 1–6</small>
-              </button>
-              <button
-                className={user?.hskStandard === 'HSK3' ? 'on' : ''}
-                role="tab"
-                aria-selected={user?.hskStandard === 'HSK3'}
-                disabled={busy}
-                onClick={() => patch({ hskStandard: 'HSK3' })}
-              >
-                HSK 3.0 <small>Sơ · Trung · Cao</small>
-              </button>
-            </div>
-          </div>
-
-          <div className="stack" style={{ gap: 6 }}>
-            <span className="eyebrow2">Đổi cấp nhanh</span>
-            <div className="row" style={{ gap: 8 }}>
-              <button className="btn sm" disabled={busy || (user?.hskLevel ?? 1) <= 1} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) - 1 })}>
-                ▼ Hạ cấp
-              </button>
-              <span className="pill grow" style={{ textAlign: 'center' }}>
-                {levelLabel}
-                {user?.hskStandard === 'HSK3' ? ` ≈ ${levelName('HSK2', HSK3_TO_HSK2[Math.min(user.hskLevel, 9) - 1])} (HSK 2.0)` : ''}
-              </span>
-              <button className="btn primary sm" disabled={busy || (user?.hskLevel ?? 1) >= levels} onClick={() => patch({ hskLevel: (user?.hskLevel ?? 1) + 1 })}>
-                ▲ Lên cấp
-              </button>
-            </div>
-          </div>
-
-          <label className="field">
-            Cấp hiện tại
-            <select value={user?.hskLevel ?? 1} disabled={busy} onChange={(e) => patch({ hskLevel: Number(e.target.value) })}>
-              {Array.from({ length: levels }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {levelName(user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', n)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        <section className="card stack">
-          <span className="eyebrow2">Làm đề nâng cấp HSK</span>
-          <Link className="btn primary" href="/them/thi" style={{ textAlign: 'center' }}>
-            Làm đề lên cấp
-          </Link>
-        </section>
-
-        <section className="card stack">
-          <span className="eyebrow2">Nhập mã quà</span>
-          <div className="row" style={{ gap: 8 }}>
-            <label className="field grow" style={{ margin: 0 }}>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Nhập mã, ví dụ ABC123"
-                autoCapitalize="characters"
-                autoComplete="off"
-                aria-label="Mã quà"
-              />
-            </label>
-            <button className="btn primary" disabled={redeeming || !code.trim()} onClick={redeem}>
-              Nhận
-            </button>
           </div>
         </section>
 
-        <section className="card stack">
-          <span style={{ fontWeight: 600 }}>Giao diện</span>
-          <div role="radiogroup" aria-label="Giao diện" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+        <section className="card acc-theme">
+          <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+            <h2 style={{ margin: 0 }}>Giao diện</h2>
+            <span className="acc-badge">Biển & Trời</span>
+          </div>
+          <div className="seg pillseg acc-modes" role="radiogroup" aria-label="Giao diện">
             {(
               [
-                { id: 'light', name: 'Sáng', bg: '#EEF8FF', fg: '#0B2A4A' },
-                { id: 'dark', name: 'Tối', bg: '#0A1A2B', fg: '#E6F1FF' },
-                { id: 'auto', name: 'Theo máy', bg: 'linear-gradient(90deg, #EEF8FF 50%, #0A1A2B 50%)', fg: '#3B6EA8' },
-              ] as { id: Theme; name: string; bg: string; fg: string }[]
-            ).map((t) => {
-              const on = theme === t.id;
-              return (
-                <button
-                  key={t.id}
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => applyTheme(t.id)}
-                  style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 16, background: 'var(--surface)', border: on ? '2px solid var(--accent)' : '2px solid var(--line)', minWidth: 0 }}
-                >
-                  <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', height: 44, borderRadius: 10, border: '1px solid var(--line)', background: t.bg, color: t.fg, fontWeight: 800 }}>
-                    汉
-                  </span>
-                  <b style={{ fontSize: 13 }}>
-                    {t.name}
-                    {on ? <span style={{ color: 'var(--accent)' }}> ✓</span> : null}
-                  </b>
-                </button>
-              );
-            })}
+                { id: 'light', name: 'Sáng', d: 'M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z' },
+                { id: 'dark', name: 'Tối', d: 'M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z' },
+                { id: 'auto', name: 'Theo máy', d: 'M4 5h16v11H4zM9 20h6M12 16v4' },
+              ] as { id: Theme; name: string; d: string }[]
+            ).map((t) => (
+              <button key={t.id} role="radio" aria-checked={theme === t.id} className={theme === t.id ? 'on' : ''} onClick={() => applyTheme(t.id)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d={t.d} />
+                </svg>
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <div className="acc-prev" aria-hidden="true">
+            <span className="day">
+              <small>Bản Ngày</small>
+              <span>
+                <i>hǎi</i>
+                <b className="han">海</b>
+              </span>
+            </span>
+            <span className="night">
+              <small>Bản Đêm</small>
+              <span>
+                <i>hǎi</i>
+                <b className="han">海</b>
+              </span>
+            </span>
           </div>
         </section>
 
-        <div className="menu">
-          <Link className="mrow2" href="/them/tui-do">
+        <div className="card acc-menu">
+          <Link className="acc-m" href="/them/hop-thu">
+            <span className="acc-mi" data-c="blue">
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+            </span>
+            <span className="grow">Hộp thư</span>
+            {mail?.unread ? <span className="badge-n">{mail.unread}</span> : null}
+            <span className="chev">›</span>
+          </Link>
+          <Link className="acc-m" href="/them/tui-do">
+            <span className="acc-mi" data-c="gold">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="6" width="16" height="14" rx="2" />
+                <path d="M4 10h16M10 14h4" />
+              </svg>
+            </span>
             <span className="grow">Túi đồ</span>
+            {bag !== null ? <span className="acc-r">{bag} vật phẩm</span> : null}
             <span className="chev">›</span>
           </Link>
-          <Link className="mrow2" href="/su-kien/luat">
-            <span className="grow">Luật sự kiện</span>
+          <Link className="acc-m" href="/them/thi">
+            <span className="acc-mi" data-c="blue">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 3h8v6a4 4 0 0 1-8 0zM12 13v4M8 21h8" />
+              </svg>
+            </span>
+            <span className="grow">Làm đề lên cấp</span>
+            <span className="acc-tag">HSK {next > levels ? levels : next}</span>
             <span className="chev">›</span>
           </Link>
-          <Link className="mrow2" href="/lo-trinh">
-            <span className="grow">Lộ trình cho người mới</span>
+          <button className="acc-m" onClick={() => setCodeOpen((o) => !o)} aria-expanded={codeOpen}>
+            <span className="acc-mi" data-c="sky">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9c-1.5-3-5-4-5-1.5S10 9 12 9zM12 9c1.5-3 5-4 5-1.5S14 9 12 9z" />
+              </svg>
+            </span>
+            <span className="grow">Mã quà</span>
+            <span className="acc-r link">Nhập mã</span>
+            <span className="chev">{codeOpen ? '⌄' : '›'}</span>
+          </button>
+          {codeOpen ? (
+            <div className="acc-code">
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Nhập mã, ví dụ ABC123" autoCapitalize="characters" autoComplete="off" aria-label="Mã quà" />
+              <button className="btn primary" disabled={redeeming || !code.trim()} onClick={redeem}>
+                Nhận
+              </button>
+            </div>
+          ) : null}
+          <Link className="acc-m" href="/lo-trinh">
+            <span className="acc-mi" data-c="slate">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="m15.5 8.5-2 5-5 2 2-5z" />
+              </svg>
+            </span>
+            <span className="grow">Lộ trình học</span>
             <span className="chev">›</span>
           </Link>
-          <Link className="mrow2" href="/them/huong-dan">
+          <Link className="acc-m" href="/them/huong-dan">
+            <span className="acc-mi" data-c="slate">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01" />
+              </svg>
+            </span>
             <span className="grow">Hướng dẫn</span>
             <span className="chev">›</span>
           </Link>
-          <Link className="mrow2" href="/su-kien/xep-hang">
+          <Link className="acc-m" href="/su-kien/luat">
+            <span className="acc-mi" data-c="slate">
+              <svg viewBox="0 0 24 24">
+                <path d="M14 4 20 10l-3 3-6-6zM11 7 4 14l6 6 7-7M3 21h8" />
+              </svg>
+            </span>
+            <span className="grow">Luật sự kiện</span>
+            <span className="chev">›</span>
+          </Link>
+          <Link className="acc-m" href="/su-kien/xep-hang">
+            <span className="acc-mi" data-c="gold">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 20V10M12 20V4M19 20v-7" />
+              </svg>
+            </span>
             <span className="grow">Bảng xếp hạng</span>
             <span className="chev">›</span>
           </Link>
+          {user?.role === 'ADMIN' ? (
+            <Link className="acc-m" href="/admin">
+              <span className="acc-mi" data-c="slate">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z" />
+                </svg>
+              </span>
+              <span className="grow">Quản trị bài học</span>
+              <span className="chev">›</span>
+            </Link>
+          ) : null}
         </div>
 
         <button
-          className="btn"
+          className="acc-out"
           onClick={async () => {
             await signOut();
             router.replace('/dang-nhap');
           }}
         >
-          Đăng xuất
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9" />
+          </svg>
+          Đăng xuất tài khoản
         </button>
+        <p className="acc-ver">Hanvui · Biển & Trời</p>
       </div>
       <RewardDialog info={reward} onClose={() => setReward(null)} />
     </Shell>

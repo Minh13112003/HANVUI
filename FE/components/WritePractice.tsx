@@ -83,7 +83,13 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
   }
 
   const verdict = res ? (
-    <div className="alert" style={{ borderColor: res.correct ? 'var(--good)' : 'var(--bad)', background: res.correct ? 'var(--goodbg)' : 'var(--badbg)' }}>
+    <div className={'res-banner ' + (res.correct ? 'ok' : 'no')}>
+      <span className="res-ic" aria-hidden="true">
+        {res.correct ? '✓' : '✗'}
+      </span>
+      <span className="grow">
+        <b>{res.correct ? 'Chính xác!' : 'Chưa đúng'}</b>
+        <small style={{ display: 'block' }}>
       {item.type === 'WRONG'
         ? res.correct
           ? 'Đúng rồi, đây là câu sai ngữ pháp.'
@@ -92,20 +98,21 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
           ? 'Đúng rồi. Cách xếp của bạn cũng đúng ngữ pháp; bên dưới là câu mẫu, nghĩa có thể khác câu của bạn.'
           : res.correct
             ? 'Đúng rồi.'
-            : 'Chưa đúng. Đáp án: ' + res.sentence}
+            : 'Đáp án: ' + res.sentence}
+        </small>
+      </span>
     </div>
   ) : null;
 
   // Sắp xếp câu: làm xong mới có câu đúng, pinyin, nghĩa và sơ đồ mũi tên.
   const reveal =
     res && item.type === 'ORDER' ? (
-      <div className="stack">
-        <div>
-          <div className="han" style={{ fontSize: 22, fontWeight: 700 }}>
-            {res.sentence}
-          </div>
+      <div className="stack ord-res">
+        <div className="ord-full">
+          <span className="ord-lab">Câu hoàn chỉnh</span>
+          <div className="han ord-zh">{res.sentence}</div>
           {res.pinyin ? <div className="py">{res.pinyin}</div> : null}
-          <div style={{ fontWeight: 600 }}>{res.vi}</div>
+          <div className="ord-vi">{res.vi}</div>
         </div>
         {res.tokens && res.natural ? <TranslateDiagram data={{ tokens: res.tokens, natural: res.natural }} dir="zh2vi" /> : null}
       </div>
@@ -156,23 +163,30 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
         </div>
       ) : null}
       <div className="row between">
-        <b>{TITLE[item.type]}</b>
-        <span className="pill">
-          {n + 1}/{batch.items.length} · HSK {item.level}
+        <span className="wp-q">
+          Câu {n + 1}
+          <i>/{batch.items.length}</i>
         </span>
+        <span className="pill">HSK {item.level}</span>
       </div>
+      <span className="wp-cap">{TITLE[item.type]}</span>
       {item.vi ? <p className="muted">{item.vi}</p> : null}
 
       {item.type === 'ORDER' && item.tiles ? (
         <>
-          <div className="ansrow">
+          <div className="ansrow ord-ans">
             {picked.map((p, i) => (
               <button key={i} className="tile wide on" disabled={!!res} onClick={() => setPicked(picked.filter((_, k) => k !== i))}>
-                {p}
+                {p} <i aria-hidden="true">×</i>
               </button>
             ))}
+            {!res && picked.length < item.tiles.length ? <span className="ord-slot" aria-hidden="true" /> : null}
           </div>
-          <div className="tiles">
+          <div className="sec-lab">
+            <span>Ngân hàng từ</span>
+            <span>Còn {item.tiles.length - picked.length} thẻ</span>
+          </div>
+          <div className="tiles ord-bank">
             {item.tiles.map((p, i) => {
               const used = picked.filter((x) => x === p).length >= item.tiles!.filter((x) => x === p).length;
               return (
@@ -186,9 +200,14 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
           {reveal}
           {why}
           {!res ? (
-            <button className="btn primary" disabled={picked.length !== item.tiles.length} onClick={() => check(picked)}>
-              Kiểm tra
-            </button>
+            <div className="row" style={{ gap: 10 }}>
+              <button className="btn" aria-label="Xếp lại" disabled={!picked.length} onClick={() => setPicked([])}>
+                ↺
+              </button>
+              <button className="btn primary grow" disabled={picked.length !== item.tiles.length} onClick={() => check(picked)}>
+                Kiểm tra →
+              </button>
+            </div>
           ) : null}
         </>
       ) : null}
@@ -239,7 +258,7 @@ export default function WritePractice({ kind, items, onFinish }: { kind?: Kind; 
 
       {res ? (
         <button className="btn primary" onClick={next}>
-          {n + 1 < batch.items.length ? 'Câu tiếp theo' : 'Xem kết quả'}
+          {n + 1 < batch.items.length ? 'Câu tiếp theo →' : 'Xem kết quả →'}
         </button>
       ) : null}
     </div>

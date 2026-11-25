@@ -6,32 +6,52 @@ import Shell from '@/components/Shell';
 import SkillNav from '@/components/SkillNav';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import type { Topic } from '@/lib/types';
+import type { EventState, Topic } from '@/lib/types';
 
 export default function VocabTopicsPage() {
   const { user } = useAuth();
   const [topics, setTopics] = useState<Topic[] | null>(null);
+  const [ev, setEv] = useState<EventState | null>(null);
 
   useEffect(() => {
     if (!user) return;
     api<Topic[]>('/topics?kind=VOCAB')
       .then(setTopics)
       .catch(() => setTopics([]));
+    api<EventState>('/event')
+      .then(setEv)
+      .catch(() => {});
   }, [user]);
 
   return (
     <Shell title="Học">
       <div className="stack">
         <SkillNav />
-        <section className="surf" data-g="rose">
-          <span className="wm" aria-hidden="true">
-            词
-          </span>
-          <span className="eyebrow">Từ vựng</span>
-          <div className="hnum2" style={{ fontSize: 22 }}>
-            {topics?.length ?? '…'} chủ đề
-          </div>
-        </section>
+        {ev?.active && !ev.optedOut ? (
+          <Link href="/su-kien" className="surf mission">
+            <span className="wm" aria-hidden="true">
+              谜
+            </span>
+            <div className="row between">
+              <span className="eyebrow">Nhiệm vụ thám tử</span>
+              <span className="hpill">
+                {ev.solved}/{ev.totalKeys} từ khóa
+              </span>
+            </div>
+            <div className="evt" style={{ fontSize: 21, fontWeight: 800 }}>
+              {ev.story?.title}
+            </div>
+            <div className="hbar">
+              <i style={{ width: ((ev.solved ?? 0) / (ev.totalKeys ?? 48)) * 100 + '%' }} />
+            </div>
+            <span className="mission-go">Tiếp tục phá án →</span>
+          </Link>
+        ) : null}
+
+        <div className="sec-h">
+          <h2>Từ vựng</h2>
+          <span className="pill">{topics?.length ?? '…'} chủ đề</span>
+        </div>
 
         <Link href="/hoc/chu-de" className="topic">
           <span className="big han">专</span>

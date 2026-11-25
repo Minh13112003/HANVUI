@@ -12,10 +12,10 @@ import { lessonLabel, levelName } from '@/lib/text';
 import type { EventState, LessonCard, Topic } from '@/lib/types';
 
 const LEVELS = [
-  { n: 1, name: 'HSK 1', note: 'câu ngắn' },
-  { n: 2, name: 'HSK 2', note: 'dài hơn' },
-  { n: 3, name: 'HSK 3', note: 'nhiều từ' },
-  { n: 4, name: 'HSK 4', note: 'chuyên ngành' },
+  { n: 1, name: 'HSK 1', note: '150 từ' },
+  { n: 2, name: 'HSK 2', note: '300 từ' },
+  { n: 3, name: 'HSK 3', note: '600 từ' },
+  { n: 4, name: 'HSK 4', note: '1200 từ' },
 ];
 
 export default function ListenListPage() {
@@ -156,82 +156,76 @@ export default function ListenListPage() {
         ) : null}
 
         {rows === null ? <p className="muted">Đang tải…</p> : null}
-        {rows?.some((l) => l.locked) ? (
-          <div className="alert" role="note">
-            🔒 Bài có khóa thuộc cấp cao hơn cấp hiện tại của bạn ({levelName(user?.hskStandard === 'HSK3' ? 'HSK3' : 'HSK2', user?.hskLevel ?? 1)}). Làm đề nâng cấp ở Tài khoản
-            → Thi, đạt điểm thì cấp tăng và bài được mở khóa.
+        {rows ? (
+          <div className="sec-h">
+            <h2>Bài học giao tiếp</h2>
+            <span className="pill">{rows.length} bài</span>
           </div>
         ) : null}
         {rows?.map((l) =>
           l.locked ? (
-            <button
-              key={l.id}
-              type="button"
-              className="lcard"
-              data-lv={l.level}
-              style={{ opacity: 0.6, textAlign: 'left', width: '100%' }}
-              aria-disabled="true"
-              onClick={() => window.alert(`Bài này thuộc HSK ${l.unlockLevel}. Hãy thi đạt đề lên cấp HSK ${l.unlockLevel} để mở khóa.`)}
-            >
-              <span className="lg2 han">🔒</span>
-              <span className="grow">
-                <b>{l.title}</b>
-                <small className="lsub muted">Khóa · mở khi lên HSK {l.unlockLevel}</small>
-                <span className="tags">
-                  {l.topics.map((t) => (
-                    <em key={t.id} className="tp">
-                      {t.name}
-                    </em>
-                  ))}
+            <div key={l.id} className="lc2 locked" data-lv={l.level}>
+              <div className="lc2-top">
+                <span className="lc2-ic han" aria-hidden="true">
+                  🔒
                 </span>
-              </span>
-              <span className="lr">
-                <span className="pill">HSK {l.unlockLevel}</span>
-                <small className="muted" style={{ fontWeight: 700 }}>Khóa</small>
-              </span>
-            </button>
+                <div className="grow">
+                  <span className="lc2-tag">HSK {l.unlockLevel}</span>
+                  <b className="lc2-t">{l.title}</b>
+                  <small className="muted">{l.situation}</small>
+                </div>
+              </div>
+              <div className="lc2-lock">
+                <span>🔒 Thi đạt đề lên HSK {l.unlockLevel} để mở khóa</span>
+                <Link className="btn sm" href="/them/thi">
+                  Làm đề vượt cấp →
+                </Link>
+              </div>
+            </div>
           ) : (
-          <Link
-            key={l.id}
-            href={'/hoc/nghe/' + l.id}
-            className="lcard"
-            data-lv={l.level}
-            data-done={l.status === 'done' ? '1' : undefined}
-            style={clueByLesson.has(l.id) ? { boxShadow: `inset 0 0 0 3px ${clueByLesson.get(l.id)![0].color}, var(--lift)` } : undefined}
-          >
-            <span className="lg2 han">{l.topics[0]?.glyph ?? '听'}</span>
-            <span className="grow">
-              <b>{l.title}</b>
-              <small className="lsub muted">
-                {l.situation} · {l.lines} câu
-              </small>
-              {clueByLesson.get(l.id)?.length ? (
-                <span className="tags">
-                  {clueByLesson.get(l.id)!.map((k) => (
-                    <em key={k.pos} style={{ background: k.color, borderColor: k.color, color: '#fff', fontWeight: 800 }}>
-                      Gợi ý của Ô {k.pos + 1}
-                    </em>
-                  ))}
+            <Link
+              key={l.id}
+              href={'/hoc/nghe/' + l.id}
+              className={'lc2' + (l.status === 'started' ? ' cur' : '') + (l.status === 'done' ? ' done' : '')}
+              data-lv={l.level}
+              style={clueByLesson.has(l.id) ? { boxShadow: `inset 0 0 0 3px ${clueByLesson.get(l.id)![0].color}, var(--shadow)` } : undefined}
+            >
+              <div className="lc2-top">
+                <span className="lc2-ic han" aria-hidden="true">
+                  {l.topics?.[0]?.glyph ?? '听'}
                 </span>
-              ) : null}
-              <span className="tags">
-                {l.topics.map((t) => (
-                  <em key={t.id} className="tp">
-                    {t.name}
-                  </em>
-                ))}
-                {l.tags.slice(0, 2).map((t) => (
-                  <em key={t}>{t}</em>
-                ))}
-              </span>
-            </span>
-            <span className="lr">
-              <span className="pill">{lessonLabel(l.levelShown ?? l.level)}</span>
-              <small className={l.status === 'done' ? 'py' : 'muted'} style={{ fontWeight: 700 }}>
-                {l.status === 'done' ? '✓ đã học' : l.status === 'started' ? 'đang học' : 'mới'}
-              </small>
-            </span>
-          </Link>
+                <div className="grow">
+                  <span className="lc2-meta">
+                    <span className="lc2-tag">{lessonLabel(l.levelShown ?? l.level)}</span>
+                    {clueByLesson.get(l.id)?.map((k) => (
+                      <em key={k.pos} className="lc2-clue" style={{ background: k.color }}>
+                        Gợi ý của Ô {k.pos + 1}
+                      </em>
+                    ))}
+                  </span>
+                  <b className="lc2-t">{l.title}</b>
+                  <small className="muted">
+                    {l.topics?.[0]?.name ? l.topics?.[0].name + ' · ' : ''}
+                    {l.situation}
+                  </small>
+                </div>
+              </div>
+              <div className="lc2-foot">
+                {l.status === 'done' ? (
+                  <span className="lc2-ok">✓ Đã hoàn thành</span>
+                ) : l.status === 'started' ? (
+                  <>
+                    <span className="lc2-st">Đang học</span>
+                    <span className="lc2-go">Học tiếp ▷</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="lc2-st">{l.lines} câu</span>
+                    <span className="lc2-go soft">Bắt đầu ▷</span>
+                  </>
+                )}
+              </div>
+            </Link>
           ),
         )}
         {rows?.length === 0 ? (
