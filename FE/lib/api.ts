@@ -124,5 +124,26 @@ export const authApi = {
   },
 };
 
-export const checkin = () => api<CheckinResult>('/event/checkin', { method: 'POST' });
+/** Thu nhỏ ảnh về tối đa 512px (JPEG) trước khi tải lên để khỏi vượt giới hạn 2MB của máy chủ. */
+async function shrink(file: File): Promise<Blob> {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k);
+  c.height = Math.round(bmp.height * k);
+  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error('Không đọc được ảnh'))), 'image/jpeg', 0.85));
+}
+
+export const avatarApi = {
+  async upload(file: File) {
+    const blob = await shrink(file);
+    const form = new FormData();
+    form.append('file', blob, 'avatar.jpg');
+    return api<{ avatarUrl: string | null }>('/users/me/avatar', { method: 'POST', form });
+  },
+  remove: () => api<void>('/users/me/avatar', { method: 'DELETE' }),
+};
+
+export const checkin =() => api<CheckinResult>('/event/checkin', { method: 'POST' });
 export const ping = () => api<{ onlineSec: number; granted: number }>('/event/ping', { method: 'POST' });

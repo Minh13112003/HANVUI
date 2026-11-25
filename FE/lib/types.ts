@@ -10,6 +10,7 @@ export interface User {
   hskStandard: HskStandard;
   hskLevel: number;
   isVip: boolean;
+  avatarUrl?: string | null;
 }
 
 export interface Topic {

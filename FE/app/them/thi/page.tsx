@@ -174,6 +174,9 @@ export default function ExamPage() {
 
   const total = useMemo(() => run?.exam.sections.reduce((n, s) => n + s.questions.length, 0) ?? 0, [run]);
   const done = useMemo(() => Object.values(answers).filter(answered).length, [answers]);
+  const [cur, setCur] = useState(0);
+  useEffect(() => setCur(0), [run]);
+  const flat = useMemo(() => run?.exam.sections.flatMap((s) => s.questions) ?? [], [run]);
   const set = (id: string, a: Ans) => setAnswers((cur) => ({ ...cur, [id]: a }));
 
   const listen = (q: Q) => {
@@ -237,6 +240,7 @@ export default function ExamPage() {
   // ── Đang làm đề ──
   if (run) {
     let n = 0;
+    let secBase = 0;
     const hasPy = run.exam.sections.some((s) => s.questions.some((q) => q.py));
     const pyOf = (q: Q, s?: string) => (showPy && s ? q.py?.[s] : undefined);
     const on = (yes: boolean) => (yes ? { borderColor: 'var(--accent)', boxShadow: '0 0 0 2px var(--accent) inset' } : undefined);
@@ -247,7 +251,7 @@ export default function ExamPage() {
       const used = plays[q.id] ?? 0;
       const audible = Boolean(q.audio?.length || q.script?.length);
       return (
-        <div className="card stack" key={q.id}>
+        <div className="card stack" key={q.id} hidden={n !== cur + 1}>
           <div className="row between">
             <b>Câu {n}</b>
             {audible ? (
@@ -387,8 +391,23 @@ export default function ExamPage() {
           ) : null}
           {err ? <div className="alert">{err}</div> : null}
 
+          <div className="qnav" role="tablist" aria-label="Danh sách câu">
+            {flat.map((q, i) => (
+              <button key={q.id} role="tab" aria-selected={i === cur} className={(i === cur ? 'cur ' : '') + (answered(answers[q.id]) ? 'done' : '')} onClick={() => setCur(i)}>
+                {i + 1}
+              </button>
+            ))}
+          </div>
+
           {run.exam.sections.map((s) => {
             let from = 0;
+            const sStart = secBase;
+            secBase += s.questions.length;
+            if (cur < sStart || cur >= secBase) {
+              n += s.questions.length;
+              return null;
+            }
+            let pBase = sStart;
             return (
               <section className="stack" key={s.name}>
                 <div className="row between">
@@ -400,9 +419,13 @@ export default function ExamPage() {
                 {s.parts.map((p, pi) => {
                   const qs = s.questions.slice(from, from + p.count);
                   from += p.count;
+                  const pStart = pBase;
+                  pBase += p.count;
+                  const inPart = cur >= pStart && cur < pBase;
+                  if (!inPart) n += qs.length;
                   return (
                     <div className="stack" key={pi}>
-                      {p.title || p.guide ? (
+                      {inPart && (p.title || p.guide) ? (
                         <div className="card stack" style={{ background: 'var(--surface2)' }}>
                           {p.title ? <b className="han">{p.title}</b> : null}
                           {p.guide ? <small>{p.guide}</small> : null}
@@ -418,7 +441,7 @@ export default function ExamPage() {
                           ) : null}
                         </div>
                       ) : null}
-                      {qs.map((q) => renderQ(q, p))}
+                      {inPart ? qs.map((q) => renderQ(q, p)) : null}
                     </div>
                   );
                 })}
@@ -426,9 +449,25 @@ export default function ExamPage() {
             );
           })}
 
-          <button className="btn primary" disabled={busy} onClick={submit}>
-            Nộp bài ({done}/{total})
-          </button>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn" disabled={cur === 0} onClick={() => setCur(cur - 1)}>
+              ‹ Trước
+            </button>
+            {cur < total - 1 ? (
+              <button className="btn primary grow" onClick={() => setCur(cur + 1)}>
+                Câu sau ›
+              </button>
+            ) : (
+              <button className="btn primary grow" disabled={busy} onClick={submit}>
+                Nộp bài ({done}/{total})
+              </button>
+            )}
+          </div>
+          {cur < total - 1 && done === total ? (
+            <button className="btn" disabled={busy} onClick={submit}>
+              Nộp bài ({done}/{total})
+            </button>
+          ) : null}
         </div>
       </Shell>
     );

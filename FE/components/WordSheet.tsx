@@ -59,6 +59,7 @@ function WordExtras({ usage, synonyms }: { usage?: string | null; synonyms?: { z
 
 export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId?: string }) {
   const { toast, closeSheet } = useUi();
+  const [tab, setTab] = useState<'nghia' | 'viet' | 'nho'>('nghia');
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [audioKey, setAudioKey] = useState<string | null>(null);
@@ -146,6 +147,16 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
 
       <div className="ws-vi">{shown.vi ? <b>{shown.vi}</b> : <span className="muted">AI sẽ điền nghĩa</span>}</div>
 
+      <div className="seg pillseg ws-tabs" role="tablist">
+        {(['nghia', 'viet', 'nho'] as const).map((k) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
+            {k === 'nghia' ? 'Nghĩa' : k === 'viet' ? 'Cách viết' : 'Nhớ chữ'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'nghia' ? (
+        <>
       {shown.example ? (
         <div className="note">
           <div className="han" style={{ fontSize: 20 }}>
@@ -159,13 +170,18 @@ export default function WordSheet({ word, lessonId }: { word: WordLike; lessonId
         </div>
       ) : null}
 
-      {info ? <WordExtras usage={info.usage} synonyms={info.synonyms} /> : null}
-
-      {info?.chars ? (
-        <WordInsight data={{ mnemonic: info.mnemonic ?? null, colloc: info.colloc ?? null, chars: info.chars, compare: info.compare ?? [] }} />
+          {info ? <WordExtras usage={info.usage} synonyms={info.synonyms} /> : null}
+          {!shown.example && !info?.usage && !info?.synonyms?.length ? <p className="muted" style={{ fontSize: 14 }}>Chưa có ví dụ cho từ này.</p> : null}
+        </>
       ) : null}
-
-      <Stroke word={word.zh} />
+      {tab === 'viet' ? <Stroke word={word.zh} /> : null}
+      {tab === 'nho' ? (
+        info?.chars ? (
+          <WordInsight data={{ mnemonic: info.mnemonic ?? null, colloc: info.colloc ?? null, chars: info.chars, compare: info.compare ?? [] }} />
+        ) : (
+          <p className="muted" style={{ fontSize: 14 }}>Chưa có cách nhớ cho từ này.</p>
+        )
+      ) : null}
 
       <div className="row" style={{ gap: 8 }}>
         {savedId != null ? (

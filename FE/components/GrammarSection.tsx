@@ -178,7 +178,7 @@ export default function GrammarSection() {
             {practice ? (
               <WritePractice items={detail.practice} onFinish={back} />
             ) : (
-              <button className="btn primary" onClick={() => setPractice(true)}>
+              <button className="btn primary gx-sticky" onClick={() => setPractice(true)}>
                 ✍️ Luyện tập ({detail.practice.length} câu: sắp xếp · điền · chọn · tìm câu sai)
               </button>
             )}

@@ -1986,3 +1986,26 @@ body {
   white-space: nowrap;
   padding-inline: 14px;
 }
+
+/* Ảnh đại diện */
+.havatar{overflow:hidden}
+.havatar img,.acc-av img{width:100%;height:100%;object-fit:cover;display:block}
+.acc-av{overflow:hidden}
+.acc-avwrap{position:relative;flex:none}
+.acc-avedit{position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);background:var(--accent);display:grid;place-items:center;cursor:pointer;padding:0}
+.acc-avedit svg{width:15px;height:15px;fill:none;stroke:var(--accent-fg);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.acc-links{display:flex;gap:14px;margin-top:4px}
+.acc-links button{background:none;border:0;padding:2px 0;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer}
+.acc-nameedit{display:flex;gap:8px;align-items:center}
+.acc-nameedit input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);font-size:16px}
+
+.ws-tabs{margin:4px 0 2px}
+
+.gx-sticky{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom));z-index:5;box-shadow:0 8px 20px rgba(21,101,192,.3);border-radius:999px;padding:14px}
+.gx-h{font-size:15px}
+.gx-ex{background:var(--surface2);border-radius:14px;padding:12px}
+
+.qnav{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none}
+.qnav button{flex:none;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);font-weight:700;font-size:13px;cursor:pointer}
+.qnav button.done{background:var(--goodbg);color:var(--good);border-color:transparent}
+.qnav button.cur{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}

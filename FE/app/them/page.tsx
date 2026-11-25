@@ -2,10 +2,10 @@
 // Tài khoản: hồ sơ, chuẩn và cấp HSK, làm đề lên cấp, nhập mã quà, giao diện, túi đồ, luật sự kiện, hướng dẫn.
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import RewardDialog, { type RewardInfo } from '@/components/RewardDialog';
 import Shell from '@/components/Shell';
-import { api, authApi } from '@/lib/api';
+import { api, authApi, avatarApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { levelName, standardName } from '@/lib/text';
 import { useUi } from '@/lib/ui';
@@ -89,6 +89,54 @@ export default function MorePage() {
     }
   };
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editName, setEditName] = useState<string | null>(null);
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setBusy(true);
+    try {
+      const r = await avatarApi.upload(f);
+      if (user) setUser({ ...user, avatarUrl: r.avatarUrl });
+      toast('Đã đổi ảnh đại diện');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không tải được ảnh');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!user?.avatarUrl || !window.confirm('Xóa ảnh đại diện?')) return;
+    setBusy(true);
+    try {
+      await avatarApi.remove();
+      setUser({ ...user, avatarUrl: null });
+      toast('Đã xóa ảnh đại diện');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không xóa được ảnh');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveName = async () => {
+    const n = (editName ?? '').trim();
+    if (!n || n === user?.displayName) return setEditName(null);
+    setBusy(true);
+    try {
+      setUser(await authApi.patchMe({ displayName: n }));
+      toast('Đã đổi tên');
+      setEditName(null);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không đổi được tên');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const next = (user?.hskLevel ?? 1) + 1;
   const initial = (user?.displayName || '?').trim().charAt(0).toUpperCase();
 
@@ -97,11 +145,37 @@ export default function MorePage() {
       <div className="stack acc">
         <section className="card acc-prof">
           <div className="acc-top">
-            <span className="acc-av" aria-hidden="true">
-              {initial}
-            </span>
+            <div className="acc-avwrap">
+              <span className="acc-av" aria-hidden="true">
+                {user?.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatarUrl} alt="" />
+                ) : (
+                  initial
+                )}
+              </span>
+              <button className="acc-avedit" aria-label="Đổi ảnh đại diện" disabled={busy} onClick={() => fileRef.current?.click()}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onPick} />
+            </div>
             <div className="grow" style={{ minWidth: 0 }}>
-              <h1 className="acc-name">{user?.displayName}</h1>
+              {editName === null ? (
+                <h1 className="acc-name">{user?.displayName}</h1>
+              ) : (
+                <div className="acc-nameedit">
+                  <input value={editName} maxLength={40} autoFocus onChange={(e) => setEditName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveName()} aria-label="Tên hiển thị" />
+                  <button className="btn sm primary" disabled={busy} onClick={saveName}>
+                    Lưu
+                  </button>
+                </div>
+              )}
+              <div className="acc-links">
+                {editName === null ? <button onClick={() => setEditName(user?.displayName ?? '')}>Sửa tên</button> : <button onClick={() => setEditName(null)}>Hủy</button>}
+                {user?.avatarUrl ? <button onClick={removeAvatar}>Xóa ảnh</button> : null}
+              </div>
               <div className="acc-sub">
                 <span className="acc-lv">{levelLabel}</span>
                 <small className="muted">{user?.email}</small>

@@ -73,7 +73,12 @@ export default function Shell({ children, title }: { children: React.ReactNode; 
               <span aria-hidden="true" style={{ marginLeft: 6 }}>💡</span> {tokens ?? '…'}
             </Link>
             <Link href="/them" className="havatar" aria-label="Tài khoản">
-              {(user.displayName || '?').trim().charAt(0).toUpperCase()}
+              {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatarUrl} alt="" />
+              ) : (
+                (user.displayName || '?').trim().charAt(0).toUpperCase()
+              )}
             </Link>
           </div>
         </header>
